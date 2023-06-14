@@ -1,0 +1,38 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+	<LangVersion>10.0</LangVersion>
+	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <TargetFramework>net7.0</TargetFramework>
+	<PublishReadyToRun>true</PublishReadyToRun>
+	<PublishSingleFile>true</PublishSingleFile>
+	<IncludeSymbolsInSingleFile>true</IncludeSymbolsInSingleFile>
+	<IncludeAllContentsInSingleFile>true</IncludeAllContentsInSingleFile>
+	<SelfContained>true</SelfContained>
+	<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+	<GenerateBindingRedirectsOutputType>false</GenerateBindingRedirectsOutputType>
+	<UseAppHost>true</UseAppHost>
+	<Optimize>true</Optimize>
+	<PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="GHDS_ModdingTool.cs" />
+    <Compile Include="nds\*.cs" />
+    <Compile Include="utils\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+	<Compile Include="AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+	<!--<Reference Include="./packages/NAudio.dll" />-->
+  </ItemGroup>
+  <ItemGroup>
+	<!-- <EmbeddedResource Include="./packages/NAudio.dll" /> -->
+	<EmbeddedResource Include="./GHDS_ModdingTool.ico" />
+  </ItemGroup>
+  <PropertyGroup>
+	<applicationicon>kh.ico</applicationicon>
+  </PropertyGroup>
+  <Target Name="Build">
+    <Csc Sources="@(Compile)" References="@(Reference)" Resources="@(EmbeddedResource)" Win32Icon="GHDS_ModdingTool.ico"/>
+  </Target>
+</Project>
