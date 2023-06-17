@@ -41,30 +41,54 @@ namespace GHDS_ModdingTool{
             FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(ExecutingAssembly.Location);
             version = "v" + fvi.ProductVersion;
             
-            ProcessArgs(args);
+            ParseArgs(args);
             
             Console.WriteLine("You can now press any key or close this window!");
             Console.ReadLine();
         }
         
-        static void ProcessArgs(string[] args){
+        static bool ProcessArg(string arg){
+            bool noNDS = true;
+            byte[] compressed;
+            byte[] decompressed;
+            switch(Path.GetExtension(arg).ToLower()){
+                case ".nds":
+                    NDSFile nds = new NDSFile(arg);
+                    noNDS = false;
+                    break;
+                case ".decompressed":
+                    decompressed = File.ReadAllBytes(arg);
+                    compressed = LZ10.Compress(decompressed);
+                    if(compressed.Length != decompressed.Length){
+                        File.WriteAllBytes(arg + ".compressed", compressed);
+                        Console.WriteLine($"Compressed: {arg}");
+                    }
+                    break;
+                default:
+                    compressed = File.ReadAllBytes(arg);
+                    decompressed = LZ10.Decompress(compressed);
+                    if(compressed.Length != decompressed.Length){
+                        File.WriteAllBytes(arg + ".decompressed", decompressed);
+                        Console.WriteLine($"Decompressed: {arg}");
+                    }
+                    break;
+            }
+            return !noNDS;
+        }
+        
+        static void ParseArgs(string[] args){
             bool noNDS = true;
             
             for(int i = 0; i < args.Length; i++){
                 string arg = args[i];
-                switch(Path.GetExtension(arg).ToLower()){
-                    case ".nds":
-                        NDSFile nds = new NDSFile(arg);
-                        noNDS = false;
-                        break;
-                    default:
-                        byte[] compressed = File.ReadAllBytes(arg);
-                        byte[] decompressed = LZ10.Decompress(compressed);
-                        if(compressed.Length != decompressed.Length){
-                            File.WriteAllBytes(arg + ".decompressed", decompressed);
-                            Console.WriteLine($"Decompressed: {arg}");
-                        }
-                        break;
+                if(Directory.Exists(arg)){
+                    Directory.GetFiles(arg).ToList().ForEach(file => {
+                       bool nds = ProcessArg(file);
+                       if(nds) noNDS = false;
+                    });
+                }else{
+                    bool nds = ProcessArg(arg);
+                    if(nds) noNDS = false;
                 }
             }
             if(noNDS) Console.WriteLine("Please drag and drop a valid .NDS file on this executable!");
