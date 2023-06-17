@@ -27,43 +27,44 @@ public static class LZ10{
         using(BinaryReader br = new BinaryReader(ms)){
             List<Chunk> chunks = new List<Chunk>();
             
-            byte magic = br.ReadByte();
-            
-            if(magic != 0x4c) return bytes;
+            byte magic = 0x4c;
             
             while(magic == 0x4c || magic == 0x30){
-                uint chunkOffset = Helpers.BytesToUInt24(br.ReadBytes(3));
                 magic = br.ReadByte();
-                long nextChunkPosition = ms.Position;
-                
-                if(bytes.Length < chunkOffset) return bytes;
-                
-                uint chunkEndOffset = Helpers.BytesToUInt24(br.ReadBytes(3));
-                uint chunkSize = chunkEndOffset - chunkOffset;
-                
-                if(bytes.Length < chunkEndOffset) return bytes;
-                
-                ms.Seek(chunkOffset, SeekOrigin.Begin);
-                byte[] compressedBytes = br.ReadBytes((int)chunkSize);
-                
-                chunks.Add(new Chunk(compressedBytes, magic != 0x30));
-                
+            
                 if(magic == 0x45){
                     // No more chunks
                     break;
                 }
+                
                 if(magic != 0x4c && magic != 0x30){
                     // Uh... This was not supposed to happen!
                     // Unless the file is just not compressed after all!
                     return bytes;
                 }
                 
+                uint chunkOffset = Helpers.BytesToUInt24(br.ReadBytes(3));
+                long nextChunkPosition = ms.Position;
+                br.ReadByte();
+                
+                if(bytes.Length < chunkOffset) return bytes;
+                
+                uint chunkEndOffset = Helpers.BytesToUInt24(br.ReadBytes(3));
+                uint chunkSize = chunkEndOffset - chunkOffset;
+
+                if(bytes.Length < chunkEndOffset) return bytes;
+                
+                ms.Seek(chunkOffset, SeekOrigin.Begin);
+                byte[] compressedBytes = br.ReadBytes((int)chunkSize);
+                
+                chunks.Add(new Chunk(compressedBytes, magic != 0x30));                
                 ms.Seek(nextChunkPosition, SeekOrigin.Begin);
             }
             
             List<byte[]> uncompressedBytes = new List<byte[]>();
             chunks.ForEach(chunk => {
                byte[] uncompressedChunk = chunk.Bytes;
+               //if(!chunk.IsCompressed) Console.WriteLine("Uncompressed chunk!!!");
                if(chunk.IsCompressed) uncompressedChunk = DecompressChunk(chunk.Bytes);
                uncompressedBytes.Add(uncompressedChunk);
             });
@@ -76,7 +77,7 @@ public static class LZ10{
     
     
     /* CREDITS TO: https://github.com/SciresM/FEAT/blob/master/FEAT/DSDecmp/Formats/Nitro/LZ10.cs */
-    public static byte[] DecompressChunk(byte[] bytes){
+    private static byte[] DecompressChunk(byte[] bytes){
         using(MemoryStream wms = new MemoryStream())
         using(BinaryWriter bw = new BinaryWriter(wms))
         using(MemoryStream ms = new MemoryStream(bytes))
@@ -147,8 +148,17 @@ public static class LZ10{
                     bufferOffset = (bufferOffset + 1) % bufferLength;
                 }
             }
-
-            return wms.ToArray();
+            
+            byte[] decompressed = wms.ToArray();
+                    
+            try{
+                byte[] furtherDecompressed = DecompressChunk(decompressed);
+                decompressed = furtherDecompressed;
+            }catch(Exception e){
+                // Looks like it was not double compressed...
+            }
+            
+            return decompressed;
         }
     }
     
