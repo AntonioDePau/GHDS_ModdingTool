@@ -53,6 +53,7 @@ namespace NDS{
         public bool IsCompressed = false;
         public uint OriginalDecompressedSize = 0;
         public byte[] Bytes;
+        public byte[] DecompressedBytes;
         public uint RawSize;
         public byte[] RawBytes;
         public uint Offset;
@@ -77,12 +78,12 @@ namespace NDS{
         public void SetBytes(byte[] bytes){
             //Console.WriteLine("Decompressing: " + Name);
             Bytes = bytes;
-            byte[] decompressedBytes = LZ10.Decompress(bytes, Name);
-            DecompressedSize = (uint)decompressedBytes.Length;
+            DecompressedBytes = LZ10.Decompress(bytes, Name);
+            DecompressedSize = (uint)DecompressedBytes.Length;
             if(bytes.Length != DecompressedSize) IsCompressed = true;
             if(OriginalDecompressedSize == 0) OriginalDecompressedSize = DecompressedSize;
             if(Name == "localize.English.bin"){
-                File.WriteAllBytes("localize.English.bin.decompressed", decompressedBytes);
+                File.WriteAllBytes("localize.English.bin.decompressed", DecompressedBytes);
             }
         }
         
@@ -269,12 +270,21 @@ namespace NDS{
                 uint newFSRamOffset = previousAsset.FSEntry.RAMOffset;
                 //Console.WriteLine("Previous entry offset: " + newFSRamOffset);
                 
+                /* 
+                    Repacking all files does not seem to have a major impact on the game,
+                    other than potentially overflowing the ROM size onto the higher tier.
+                */
+                bool RepackDecompressedFiles = false;
                 
                 /* WRITE ALL FILES */
                 files.ForEach(asset => {
                     uint padding = 0x04;
                             
                     byte[] bytes = asset.Bytes;
+                    if(RepackDecompressedFiles){
+                        bytes = asset.DecompressedBytes;
+                    }
+                    
                     if(asset == fsindex){
                         padding = (uint)(ms.Length + asset.RawBytes.Length);
                         RAMOffset = padding * 2;
@@ -283,11 +293,11 @@ namespace NDS{
                     
                     if(asset.FSEntry != null){
                         /* Update the RAM offset */
-                        if(asset.IsCompressed && RAMOffset % 2 == 0){
+                        if((!RepackDecompressedFiles && asset.IsCompressed) && RAMOffset % 2 == 0){
                             //Console.WriteLine($"Compressed(1) [{RAMOffset.ToString("X8")} => {(RAMOffset + 1).ToString("X8")}]: {asset.Name}");
                             RAMOffset++;
                         }
-                        if(!asset.IsCompressed && RAMOffset % 2 != 0){
+                        if((RepackDecompressedFiles || !asset.IsCompressed) && RAMOffset % 2 != 0){
                             //Console.WriteLine($"Compressed(0) [{RAMOffset.ToString("X8")} => {(RAMOffset - 1).ToString("X8")}]: {asset.Name}");
                             RAMOffset--;
                         }
@@ -329,7 +339,7 @@ namespace NDS{
                     
                     /* UPDATE FAT ENTRY */
                     uint offsetStart = (uint)ms.Length;
-                    uint offsetEnd = (uint)(offsetStart + asset.Bytes.Length);
+                    uint offsetEnd = (uint)(offsetStart + bytes.Length);
                     asset.Offset = offsetStart;
                     
                     ms.Seek(FAT.Offset + asset.FATIndex * 8, SeekOrigin.Begin);
@@ -360,7 +370,7 @@ namespace NDS{
                         ms.Seek(fsindex.Offset + 0x0c + (0x0c * asset.FSEntry.Index), SeekOrigin.Begin);
                         ms.Seek(0x04, SeekOrigin.Current);
                         
-                        int comp = asset.IsCompressed ? 1 : 0;
+                        int comp = asset.IsCompressed ? (RepackDecompressedFiles ? 0 : 1) : 0;
                         //Console.WriteLine($"New offset (Compressed({comp})) [{RAMOffset.ToString("X8")}]: {asset.Name}");
                         bw.Write(RAMOffset);
                         //if(RAMOffset != asset.FSEntry.RAMOffset){
@@ -372,6 +382,8 @@ namespace NDS{
                         
                         /* Skip the unknown byte */
                         ms.Seek(0x01, SeekOrigin.Current);
+                        /* Changing the unknown byte does not seem to have any impact?!! */
+                        //bw.Write((byte)0xff);
                         
                         /* Get the next entry, if there is one */
                         if(fsEntries.IndexOf(asset) + 1 < fsEntries.Count){
@@ -387,7 +399,7 @@ namespace NDS{
                             //Console.WriteLine($"Expected {asset.OriginalDecompressedSize.ToString("X8")}, got {asset.DecompressedSize.ToString("X8")}, for: {asset.Name}");
                         }
                         
-                        if(asset.Bytes.Length != asset.Size){
+                        if(bytes.Length != asset.Size){
                             //Console.WriteLine($"File updated: {asset.Name}");
                             /* Assets need a buffer that's double their raw size */
                             diff = rawSize * 2;
