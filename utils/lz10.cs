@@ -42,6 +42,7 @@ public static class LZ10{
             
                 if(magic == 0x45){
                     // No more chunks
+                    if(chunks.Count == 0) return bytes;
                     break;
                 }
                 
