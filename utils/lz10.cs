@@ -158,6 +158,8 @@ public static class LZ10{
             }
             
             byte[] decompressed = wms.ToArray();
+            
+            if(DecompressedSize != decompressed.Length) return bytes;
                     
             try{
                 byte[] furtherDecompressed = DecompressChunk(decompressed);
