@@ -246,8 +246,6 @@ public static class LZ10{
                 chunks.Add(chunk);
             }
             
-            Console.WriteLine("Chunks: " + chunks.Count);
-            
             bw.Write(Enumerable.Repeat((byte)0xff, (chunks.Count + 1) * 0x04).ToArray());
             int headOffset = 0x0;
             long offset = wms.Length;
