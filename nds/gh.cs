@@ -3,6 +3,9 @@ using System.IO;
 using System.Collections.Generic;
 using System.Text;
 using System.Linq;
+using WAV;
+using HWAS;
+using ImaAdpcm;
 
 namespace NDS{
     public class Song{
@@ -177,6 +180,22 @@ namespace NDS{
             OGGSampleRate = (uint)(HasDrums ? 15000 : 14961);
         }
     }
+       
+    public class SongFile{
+        public string Name;
+        public string ID;
+        public List<string> Extensions;
+        public string OriginalExtension;
+        public string FoundExtension;
+        public ModdingSettings moddingSettings;
+        
+        public SongFile(string name, List<string> extensions, string id){
+            Name = name;
+            ID = id;
+            Extensions = extensions;
+            OriginalExtension = Extensions[0];
+        }
+    }
 
     public static class GH{
         public static List<GHGAME> GHGAMES = new List<GHGAME>(){
@@ -331,41 +350,64 @@ namespace NDS{
                     File.WriteAllText(metadata, metadata_text);
                 }
                 
-                
-                List<string[]> byteFileNames = new List<string[]>(){
-                    new string[]{"_song.hwas", "Main"},
-                    new string[]{"_rhythm.ogg", "Rhythm"},
-                    new string[]{"_guitar.ogg", "Guitar"},
-                    new string[]{"_drums.hwas", "Drums"},
-                    new string[]{"_gems_easy.qgm", "GuitarNotesEasy"},
-                    new string[]{"_gems_med.qgm", "GuitarNotesMedium"},
-                    new string[]{"_gems_hard.qgm", "GuitarNotesHard"},
-                    new string[]{"_gems_expert.qgm", "GuitarNotesExpert"},
-                    new string[]{"_gems_bass_easy.qgm", "BassNotesEasy"},
-                    new string[]{"_gems_bass_med.qgm", "BassNotesMedium"},
-                    new string[]{"_gems_bass_hard.qgm", "BassNotesHard"},
-                    new string[]{"_gems_bass_expert.qgm", "BassNotesExpert"},
-                    new string[]{"_gems_drum_easy.qgm", "DrumNotesEasy"},
-                    new string[]{"_gems_drum_med.qgm", "DrumNotesMedium"},
-                    new string[]{"_gems_drum_hard.qgm", "DrumNotesHard"},
-                    new string[]{"_gems_drum_expert.qgm", "DrumNotesExpert"},
-                    new string[]{"_vocal_lyrics.qb", "VocalLyrics"},
-                    new string[]{"_vocal_note_range.qb", "VocalNoteRange"},
-                    new string[]{"_vocal_notes.qb", "VocalNotes"},
-                    new string[]{"_vocal_phrases.qb", "VocalPhrases"},
-                    //new string[]{"_timesig.qsig", "TimeSignature"}
-                    new string[]{"_frets.qft", "Frets"}
+                List<SongFile> SongFiles = new List<SongFile>{
+                    new SongFile("_song", new List<string>{"hwas", "wav"}, "Main"),
+                    new SongFile("_rhythm", new List<string>{"ogg"}, "Rhythm"),
+                    new SongFile("_guitar", new List<string>{"ogg"}, "Guitar"),
+                    new SongFile("_drums", new List<string>{"hwas", "wav"}, "Drums"),
+                    new SongFile("_gems_easy", new List<string>{"qgm"}, "GuitarNotesEasy"),
+                    new SongFile("_gems_med", new List<string>{"qgm"}, "GuitarNotesMedium"),
+                    new SongFile("_gems_hard", new List<string>{"qgm"}, "GuitarNotesHard"),
+                    new SongFile("_gems_expert", new List<string>{"qgm"}, "GuitarNotesExpert"),
+                    new SongFile("_gems_bass_easy", new List<string>{"qgm"}, "BassNotesEasy"),
+                    new SongFile("_gems_bass_med", new List<string>{"qgm"}, "BassNotesMedium"),
+                    new SongFile("_gems_bass_hard", new List<string>{"qgm"}, "BassNotesHard"),
+                    new SongFile("_gems_bass_expert", new List<string>{"qgm"}, "BassNotesExpert"),
+                    new SongFile("_gems_drum_easy", new List<string>{"qgm"}, "DrumNotesEasy"),
+                    new SongFile("_gems_drum_med", new List<string>{"qgm"}, "DrumNotesMedium"),
+                    new SongFile("_gems_drum_hard", new List<string>{"qgm"}, "DrumNotesHard"),
+                    new SongFile("_gems_drum_expert", new List<string>{"qgm"}, "DrumNotesExpert"),
+                    new SongFile("_vocal_lyrics", new List<string>{"qb"}, "VocalLyrics"),
+                    new SongFile("_vocal_note_range", new List<string>{"qb"}, "VocalNoteRange"),
+                    new SongFile("_vocal_notes", new List<string>{"qb"}, "VocalNotes"),
+                    new SongFile("_vocal_phrases", new List<string>{"qb"}, "VocalPhrases"),
+                    //new SongFile("_timesig.qsig", new List<string>{"qsig"}, "TimeSignature")
+                    new SongFile("_frets", new List<string>{"qft"}, "Frets")
                 };
                 
                 List<string> byteFiles = Directory.GetFiles(custom_song_folder).ToList();
-                byteFileNames.ForEach(byteFileName => {
+                
+                SongFiles.ForEach(songFile => {
                     //Console.WriteLine("Looking for: " + byteFileName);
-                    string byteFile = byteFiles.Find(x => x.EndsWith(byteFileName[0]));
-                    if(byteFile != null && song[byteFileName[1]] != null){
-                        Console.WriteLine($"Asset replacement detected for: {song.ID}{byteFileName[0]}");
+                    string byteFile = byteFiles.Find(bf => {
+                        return songFile.Extensions.Find(ext => {
+                           bool found = bf.EndsWith($"{songFile.Name}.{ext}");
+                           if(found){
+                               songFile.FoundExtension = ext;
+                           }
+                           return found;
+                        }) != null;
+                    });
+                    
+                    if(byteFile != null && song[songFile.ID] != null){
+                        Console.WriteLine($"Asset replacement detected for: {song.ID}{songFile.Name} => {Path.GetFileName(byteFile)}");
                         edited = true;
                         byte[] bytes = File.ReadAllBytes(byteFile);
-                        song[byteFileName[1]].SetBytes(bytes);
+                        if(songFile.FoundExtension != songFile.OriginalExtension){
+                            Console.WriteLine($"This file requires conversion: {songFile.FoundExtension} => {songFile.OriginalExtension}");
+                            switch(songFile.OriginalExtension){
+                                case "hwas":
+                                    int hwasSampleRate = (int)ghgame.HWASSampleRate;
+                                    
+                                    byte[] WAVbytes = ImaCodec.Encode(bytes, hwasSampleRate);
+                                    
+                                    HwasFile hwas = new HwasFile(WAVbytes, hwasSampleRate);
+                                    bytes = hwas.GetAllBytes();
+                                    File.WriteAllBytes(byteFile + ".hwas", bytes);
+                                    break;
+                            }
+                        }
+                        song[songFile.ID].SetBytes(bytes);
                     }
                 });
                 

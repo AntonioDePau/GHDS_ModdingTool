@@ -81,3 +81,6 @@ or contact me on Discord (antoniodepau), you can find me in the [GHDS Central](h
 
 ## Extra credits
 - SciresM
+- The [NAudio team](https://github.com/naudio/NAudio)
+- Flitskikker for the [IMAADPCM encoding](https://github.com/Flitskikker/IMAADPCMEncoder)
+- Pigu-A for the [WAV implementation](https://github.com/Pigu-A/SidWiz/)
