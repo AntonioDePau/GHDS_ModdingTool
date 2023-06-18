@@ -410,7 +410,7 @@ namespace NDS{
                                     break;
                             }
                         }
-                        song[songFile.ID].SetBytes(bytes);
+                        song[songFile.ID].SetBytes(bytes, true);
                     }
                 });
                 

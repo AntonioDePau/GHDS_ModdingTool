@@ -53,6 +53,7 @@ namespace NDS{
         public uint DecompressedSize;
         public bool IsCompressed = false;
         public uint OriginalDecompressedSize = 0;
+        public bool OriginalIsCompressed = false;
         public byte[] Bytes;
         public byte[] DecompressedBytes;
         public uint RawSize;
@@ -76,13 +77,24 @@ namespace NDS{
             ID = id;
         }
         
-        public void SetBytes(byte[] bytes){
+        public void SetBytes(byte[] bytes, bool edited = false){
             //Console.WriteLine("Decompressing: " + Name);
+            Edited = edited;
             Bytes = bytes;
             DecompressedBytes = LZ10.Decompress(bytes, Name);
             DecompressedSize = (uint)DecompressedBytes.Length;
-            if(bytes.Length != DecompressedSize) IsCompressed = true;
-            if(OriginalDecompressedSize == 0) OriginalDecompressedSize = DecompressedSize;
+            
+            IsCompressed = bytes.Length != DecompressedSize;
+            if(edited && OriginalIsCompressed != IsCompressed){
+                Console.WriteLine($"Original is{(OriginalIsCompressed ? "" : " not")} compressed but new is{(IsCompressed ? "" : " not")}: {Name}");
+                IsCompressed = true;
+                Bytes = LZ10.Compress(DecompressedBytes);
+            }
+            
+            if(OriginalDecompressedSize == 0){
+                OriginalDecompressedSize = DecompressedSize;
+                OriginalIsCompressed = IsCompressed;
+            }
             if(Name == "localize.English.bin"){
                 File.WriteAllBytes("localize.English.bin.decompressed", DecompressedBytes);
             }
@@ -404,7 +416,7 @@ namespace NDS{
                             //Console.WriteLine($"Expected {asset.OriginalDecompressedSize.ToString("X8")}, got {asset.DecompressedSize.ToString("X8")}, for: {asset.Name}");
                         }
                         
-                        if(bytes.Length != asset.Size){
+                        if(asset.Edited){
                             //Console.WriteLine($"File updated: {asset.Name}");
                             /* Assets need a buffer that's double their raw size */
                             diff = rawSize * 2;
