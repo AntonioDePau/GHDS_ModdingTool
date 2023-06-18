@@ -35,10 +35,8 @@ public static class LZ10{
         using(BinaryReader br = new BinaryReader(ms)){
             List<Chunk> chunks = new List<Chunk>();
             
-            byte magic = 0x4c;
-            
-            while(magic == 0x4c || magic == 0x30){
-                magic = br.ReadByte();
+            while(true){
+                byte magic = br.ReadByte();
             
                 if(magic == 0x45){
                     // No more chunks
