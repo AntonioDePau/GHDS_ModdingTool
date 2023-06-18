@@ -6,6 +6,7 @@ using System.Linq;
 using WAV;
 using HWAS;
 using ImaAdpcm;
+using GHDS_ModdingTool;
 
 namespace NDS{
     public class Song{
@@ -214,7 +215,7 @@ namespace NDS{
             new GHGAME("C6QE52", "Guitar Hero - On Tour: Modern Hits", "US", "EN,FR"),
         };
         
-        public static bool ManageSongs(GHGAME ghgame, ARMFile ARM9, FNTFile FNT, FSINDEXFile FSINDEX, List<Song> Songs){
+        public static bool ManageSongs(GHGAME ghgame, ARMFile ARM9, FNTFile FNT, FSINDEXFile FSINDEX, List<Song> Songs, ModdingSettings moddingSettings){
             Asset firstAsset = FNT.Assets.Find(y => y.Offset == FNT.Assets.FindAll(x => !x.IsFolder).Min(x => x.Offset));
             //Console.WriteLine($"First asset at: {firstAsset.Offset} ({firstAsset.GetFullName()} -> index: {firstAsset.FATIndex})");
 
@@ -398,6 +399,8 @@ namespace NDS{
                             switch(songFile.OriginalExtension){
                                 case "hwas":
                                     int hwasSampleRate = (int)ghgame.HWASSampleRate;
+                                    if(moddingSettings.KeepHWASUserSampleRate) hwasSampleRate = -1;
+                                    if(moddingSettings.HWASSampleRate > -1) hwasSampleRate = moddingSettings.HWASSampleRate;
                                     
                                     byte[] WAVbytes = ImaCodec.Encode(bytes, hwasSampleRate);
                                     

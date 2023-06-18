@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
+using GHDS_ModdingTool;
 
 namespace NDS{    
     public class HEADERFile{
@@ -120,7 +121,10 @@ namespace NDS{
         public List<Song> Songs;
         public byte[] Bytes;
         
-        public NDSFile(string file){
+        public ModdingSettings moddingSettings;
+        
+        public NDSFile(string file, ModdingSettings mods){
+            moddingSettings = mods;
             Bytes = File.ReadAllBytes(file);
             Size = (uint)Bytes.Length;
             using(MemoryStream ms = new MemoryStream(Bytes)){
@@ -158,7 +162,7 @@ namespace NDS{
                 FSINDEX = new FSINDEXFile(Bytes, FNT);
                 Songs = new List<Song>();
                 
-                bool noCustomSongsDetected = GH.ManageSongs(ghgame, ARM9, FNT, FSINDEX, Songs);
+                bool noCustomSongsDetected = GH.ManageSongs(ghgame, ARM9, FNT, FSINDEX, Songs, moddingSettings);
                 if(noCustomSongsDetected) return;
                 
                 FNT.Assets.FindAll(x => !x.IsFolder && !x.Name.Contains("fsindex") && !x.GetFullName().StartsWith(".\\Art")).ForEach(x => {
@@ -274,7 +278,8 @@ namespace NDS{
                     Repacking all files does not seem to have a major impact on the game,
                     other than potentially overflowing the ROM size onto the higher tier.
                 */
-                bool RepackDecompressedFiles = false;
+                bool RepackDecompressedFiles = moddingSettings.KeepAllFilesUncompressed;
+                if(RepackDecompressedFiles) Console.WriteLine($"All the game's assets will be repacked as uncompressed!");
                 
                 /* WRITE ALL FILES */
                 files.ForEach(asset => {
