@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
+using GHDS_ModdingTool;
 
 namespace NDS{    
     public class HEADERFile{
@@ -52,7 +53,9 @@ namespace NDS{
         public uint DecompressedSize;
         public bool IsCompressed = false;
         public uint OriginalDecompressedSize = 0;
+        public bool OriginalIsCompressed = false;
         public byte[] Bytes;
+        public byte[] DecompressedBytes;
         public uint RawSize;
         public byte[] RawBytes;
         public uint Offset;
@@ -74,15 +77,26 @@ namespace NDS{
             ID = id;
         }
         
-        public void SetBytes(byte[] bytes){
+        public void SetBytes(byte[] bytes, bool edited = false){
             //Console.WriteLine("Decompressing: " + Name);
+            Edited = edited;
             Bytes = bytes;
-            byte[] decompressedBytes = LZ10.Decompress(bytes, Name);
-            DecompressedSize = (uint)decompressedBytes.Length;
-            if(bytes.Length != DecompressedSize) IsCompressed = true;
-            if(OriginalDecompressedSize == 0) OriginalDecompressedSize = DecompressedSize;
+            DecompressedBytes = LZ10.Decompress(bytes, Name);
+            DecompressedSize = (uint)DecompressedBytes.Length;
+            
+            IsCompressed = bytes.Length != DecompressedSize;
+            if(edited && OriginalIsCompressed != IsCompressed){
+                Console.WriteLine($"Original is{(OriginalIsCompressed ? "" : " not")} compressed but new is{(IsCompressed ? "" : " not")}: {Name}");
+                IsCompressed = true;
+                Bytes = LZ10.Compress(DecompressedBytes);
+            }
+            
+            if(OriginalDecompressedSize == 0){
+                OriginalDecompressedSize = DecompressedSize;
+                OriginalIsCompressed = IsCompressed;
+            }
             if(Name == "localize.English.bin"){
-                File.WriteAllBytes("localize.English.bin.decompressed", decompressedBytes);
+                File.WriteAllBytes("localize.English.bin.decompressed", DecompressedBytes);
             }
         }
         
@@ -119,7 +133,10 @@ namespace NDS{
         public List<Song> Songs;
         public byte[] Bytes;
         
-        public NDSFile(string file){
+        public ModdingSettings moddingSettings;
+        
+        public NDSFile(string file, ModdingSettings mods){
+            moddingSettings = mods;
             Bytes = File.ReadAllBytes(file);
             Size = (uint)Bytes.Length;
             using(MemoryStream ms = new MemoryStream(Bytes)){
@@ -157,7 +174,7 @@ namespace NDS{
                 FSINDEX = new FSINDEXFile(Bytes, FNT);
                 Songs = new List<Song>();
                 
-                bool noCustomSongsDetected = GH.ManageSongs(ghgame, ARM9, FNT, FSINDEX, Songs);
+                bool noCustomSongsDetected = GH.ManageSongs(ghgame, ARM9, FNT, FSINDEX, Songs, moddingSettings);
                 if(noCustomSongsDetected) return;
                 
                 FNT.Assets.FindAll(x => !x.IsFolder && !x.Name.Contains("fsindex") && !x.GetFullName().StartsWith(".\\Art")).ForEach(x => {
@@ -269,12 +286,22 @@ namespace NDS{
                 uint newFSRamOffset = previousAsset.FSEntry.RAMOffset;
                 //Console.WriteLine("Previous entry offset: " + newFSRamOffset);
                 
+                /* 
+                    Repacking all files does not seem to have a major impact on the game,
+                    other than potentially overflowing the ROM size onto the higher tier.
+                */
+                bool RepackDecompressedFiles = moddingSettings.KeepAllFilesUncompressed;
+                if(RepackDecompressedFiles) Console.WriteLine($"All the game's assets will be repacked as uncompressed!");
                 
                 /* WRITE ALL FILES */
                 files.ForEach(asset => {
                     uint padding = 0x04;
                             
                     byte[] bytes = asset.Bytes;
+                    if(RepackDecompressedFiles){
+                        bytes = asset.DecompressedBytes;
+                    }
+                    
                     if(asset == fsindex){
                         padding = (uint)(ms.Length + asset.RawBytes.Length);
                         RAMOffset = padding * 2;
@@ -283,11 +310,11 @@ namespace NDS{
                     
                     if(asset.FSEntry != null){
                         /* Update the RAM offset */
-                        if(asset.IsCompressed && RAMOffset % 2 == 0){
+                        if((!RepackDecompressedFiles && asset.IsCompressed) && RAMOffset % 2 == 0){
                             //Console.WriteLine($"Compressed(1) [{RAMOffset.ToString("X8")} => {(RAMOffset + 1).ToString("X8")}]: {asset.Name}");
                             RAMOffset++;
                         }
-                        if(!asset.IsCompressed && RAMOffset % 2 != 0){
+                        if((RepackDecompressedFiles || !asset.IsCompressed) && RAMOffset % 2 != 0){
                             //Console.WriteLine($"Compressed(0) [{RAMOffset.ToString("X8")} => {(RAMOffset - 1).ToString("X8")}]: {asset.Name}");
                             RAMOffset--;
                         }
@@ -329,7 +356,7 @@ namespace NDS{
                     
                     /* UPDATE FAT ENTRY */
                     uint offsetStart = (uint)ms.Length;
-                    uint offsetEnd = (uint)(offsetStart + asset.Bytes.Length);
+                    uint offsetEnd = (uint)(offsetStart + bytes.Length);
                     asset.Offset = offsetStart;
                     
                     ms.Seek(FAT.Offset + asset.FATIndex * 8, SeekOrigin.Begin);
@@ -360,7 +387,7 @@ namespace NDS{
                         ms.Seek(fsindex.Offset + 0x0c + (0x0c * asset.FSEntry.Index), SeekOrigin.Begin);
                         ms.Seek(0x04, SeekOrigin.Current);
                         
-                        int comp = asset.IsCompressed ? 1 : 0;
+                        int comp = asset.IsCompressed ? (RepackDecompressedFiles ? 0 : 1) : 0;
                         //Console.WriteLine($"New offset (Compressed({comp})) [{RAMOffset.ToString("X8")}]: {asset.Name}");
                         bw.Write(RAMOffset);
                         //if(RAMOffset != asset.FSEntry.RAMOffset){
@@ -372,6 +399,8 @@ namespace NDS{
                         
                         /* Skip the unknown byte */
                         ms.Seek(0x01, SeekOrigin.Current);
+                        /* Changing the unknown byte does not seem to have any impact?!! */
+                        //bw.Write((byte)0xff);
                         
                         /* Get the next entry, if there is one */
                         if(fsEntries.IndexOf(asset) + 1 < fsEntries.Count){
@@ -387,7 +416,7 @@ namespace NDS{
                             //Console.WriteLine($"Expected {asset.OriginalDecompressedSize.ToString("X8")}, got {asset.DecompressedSize.ToString("X8")}, for: {asset.Name}");
                         }
                         
-                        if(asset.Bytes.Length != asset.Size){
+                        if(asset.Edited){
                             //Console.WriteLine($"File updated: {asset.Name}");
                             /* Assets need a buffer that's double their raw size */
                             diff = rawSize * 2;

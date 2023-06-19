@@ -60,14 +60,17 @@ Here is the list of possible files to replace:
 
 To replace a file, simply place the new file in the song's folder.
 
+Note that instead of _song.hwas or _drums.hwas files, you can provide _song.wav or _drums.wav files.
+
 ### Apply the changes
 Once the song information and files have edited/updated, simply drag and drop a Guitar Hero or Band Hero game onto the executable again.
 A new ROM will be created with all the changes you've made.
 
 ## Features
 - [x] Mod GHOTD, GHOTMH, and BH songs
-- [ ] Make modding easier by making it possible to compress relevant files automatically **[PLANNED]**
-- [ ] Make modding easier by supporting other sound formats (.wav) **[PLANNED]**
+- [x] Make modding easier by making it possible to compress relevant files automatically
+- [x] Make modding easier by supporting other sound formats (.wav)
+- [ ] Make modding easier by supporting other sound formats (.ogg) **[CONSIDERED]**
 - [ ] Make modding easier by supporting other chart formats (.chart) **[PLANNED]**
 
 ## Support
@@ -81,3 +84,6 @@ or contact me on Discord (antoniodepau), you can find me in the [GHDS Central](h
 
 ## Extra credits
 - SciresM
+- The [NAudio team](https://github.com/naudio/NAudio)
+- Flitskikker for the [IMAADPCM encoding](https://github.com/Flitskikker/IMAADPCMEncoder)
+- Pigu-A for the [WAV implementation](https://github.com/Pigu-A/SidWiz/)

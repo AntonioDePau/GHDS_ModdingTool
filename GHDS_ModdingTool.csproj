@@ -18,15 +18,19 @@
     <Compile Include="GHDS_ModdingTool.cs" />
     <Compile Include="nds\*.cs" />
     <Compile Include="utils\*.cs" />
+    <Compile Include="gh\*.cs" />
+    <Compile Include="gh\audio\*.cs" />
+    <Compile Include="gh\audio\WAV\*.cs" />
+    <Compile Include="gh\audio\HWAS\*.cs" />
   </ItemGroup>
   <ItemGroup>
 	<Compile Include="AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-	<!--<Reference Include="./packages/NAudio.dll" />-->
+	<Reference Include="./packages/NAudio.dll" />
   </ItemGroup>
   <ItemGroup>
-	<!-- <EmbeddedResource Include="./packages/NAudio.dll" /> -->
+	<EmbeddedResource Include="./packages/NAudio.dll" />
 	<EmbeddedResource Include="./GHDS_ModdingTool.ico" />
   </ItemGroup>
   <PropertyGroup>
