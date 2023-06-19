@@ -18,9 +18,10 @@
     <Compile Include="GHDS_ModdingTool.cs" />
     <Compile Include="nds\*.cs" />
     <Compile Include="utils\*.cs" />
-    <Compile Include="audio\*.cs" />
-    <Compile Include="audio\WAV\*.cs" />
-    <Compile Include="audio\HWAS\*.cs" />
+    <Compile Include="gh\*.cs" />
+    <Compile Include="gh\audio\*.cs" />
+    <Compile Include="gh\audio\WAV\*.cs" />
+    <Compile Include="gh\audio\HWAS\*.cs" />
   </ItemGroup>
   <ItemGroup>
 	<Compile Include="AssemblyInfo.cs" />
