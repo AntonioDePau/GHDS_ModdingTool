@@ -125,6 +125,8 @@ namespace GHDS_ModdingTool{
             FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(ExecutingAssembly.Location);
             version = "v" + fvi.ProductVersion;
             
+            Console.Title = $"GHDS_ModdingTool [{version}]";
+            
             ParseArgs(args);
             if(moddingSettings.NDSFiles.Count == 0){
                 Console.WriteLine("Please drag and drop a valid .NDS file on this executable!");
