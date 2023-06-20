@@ -59,9 +59,12 @@ namespace NDS{
         public int PreviewLengthOffset;
         public uint PreviewLength;
         
-        public Asset this[string s]{
+        public object this[string s]{
             get{
-                return (Asset)this.GetType().GetField(s).GetValue(this);
+                return (object)this.GetType().GetField(s).GetValue(this);
+            }
+            set{
+                this.GetType().GetField(s).SetValue(this, value);
             }
         }
         
@@ -197,6 +200,18 @@ namespace NDS{
             OriginalExtension = Extensions[0];
         }
     }
+    
+    public class SongInfo{
+        public string Name;
+        public List<string> Keys;
+        public string Type;
+        
+        public SongInfo(string name, List<string> keys, string type = "string"){
+                Name = name;
+                Keys = keys;
+                Type = type;
+        }
+    }
 
     public static class GH{
         public static List<GHGAME> GHGAMES = new List<GHGAME>(){
@@ -267,6 +282,15 @@ namespace NDS{
             }).ToList();
             
             bool changes = false;
+                
+            List<SongInfo> SongInformation = new List<SongInfo>{
+                new SongInfo("Title", new List<string>{"title","name"}),
+                new SongInfo("Band", new List<string>{"band","artist"}),
+                new SongInfo("Length", new List<string>{"length","song_length"}, "int"),
+                new SongInfo("Date", new List<string>{"date","year"}, "int"),
+                new SongInfo("PreviewStart", new List<string>{"perview_start","preview_start_time"}, "int"),
+                new SongInfo("PreviewLength", new List<string>{"preview_length","song_length"}, "int")
+            };
             
             SongNames.ForEach(x => {
                 List<Asset> assets = SongAssets.FindAll(y => y.Name.StartsWith(x));
@@ -278,8 +302,10 @@ namespace NDS{
                 
                 string custom_song_folder = Path.Combine(custom_songs_path, song.ID);
                 Directory.CreateDirectory(custom_song_folder);
-                                
+                
                 string metadata = Path.Combine(custom_song_folder, "metadata.txt");
+                string songIni = Path.Combine(custom_song_folder, "song.ini");
+                if(File.Exists(songIni)) metadata = songIni;
                 
                 if(File.Exists(metadata)){
                     List<string> lines = File.ReadAllLines(metadata).ToList();
@@ -288,63 +314,37 @@ namespace NDS{
                         string[] pair = line.Split('=');
                         string key = pair[0].Trim();
                         string val = pair[1].Trim().Trim('\0');
+                        
+                        SongInfo songInfo = SongInformation.Find(x => x.Keys.Contains(key));
+                        if(songInfo == null) return;
+                        
+                        string editedString = "";
+                        
                         uint parsedValue;
-                        switch(key){
-                            case "title":
-                                if(song.Title.Trim('\0') != val){
-                                    if(val.Length > 0x20){
-                                        val = val.Substring(0, 0x20);
-                                        Console.WriteLine($"Title was trimmed down to 32 characters: {val}");
-                                    }
+                        switch(songInfo.Type){
+                            case "string":
+                                val = val.Substring(0, Math.Min(0x20, val.Length));
+                                string entry = (string)song[songInfo.Name];
+                                if(entry.Trim('\0') != val){
                                     edited = true;
-                                    if(showEdited) Console.WriteLine($"   _{song.Title}_ => _{val}_");
+                                    editedString = $"   {entry} => {val}";
+                                    song[songInfo.Name] = val;
                                 }
-                                song.Title = val;
                                 break;
-                            case "band":
-                                if(song.Band.Trim('\0') != val){
-                                    if(val.Length > 0x20){
-                                        val = val.Substring(0, 0x20);
-                                        Console.WriteLine($"Band name was trimmed down to 32 characters: {val}");
-                                    }
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   _{song.Band}_ => _{val}_");
+                            case "int":
+                                parsedValue = Math.Max(0, UInt32.Parse(val));
+                                if(metadata == songIni){
+                                    if(songInfo.Name == "Length") parsedValue = (uint)Math.Round((double)(parsedValue / 1000));
                                 }
-                                song.Band = val;
-                                break;
-                            case "length":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.Length != parsedValue){
+                                uint intentry = (uint)song[songInfo.Name];
+                                if(intentry != parsedValue){
                                     edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.Length} => {val}");
+                                    editedString = $"   {intentry} => {parsedValue}";
+                                    song[songInfo.Name] = parsedValue;
                                 }
-                                song.Length = parsedValue;
-                                break;
-                            case "year":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.Date != parsedValue){
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.Date} => {parsedValue}");
-                                }
-                                song.Date = parsedValue;
-                                break;
-                            case "preview_start":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.PreviewStart != parsedValue){
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.PreviewStart} => {parsedValue}");
-                                }
-                                song.PreviewStart = parsedValue;
-                                break;
-                            case "preview_length":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.PreviewLength != parsedValue){
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.PreviewLength} => {parsedValue}");
-                                }
-                                song.PreviewLength = parsedValue;
                                 break;
                         }
+                        if(showEdited) Console.WriteLine(editedString);
                     });
                 }else{
                     string metadata_text = $"[metadata]\ntitle={song.Title.Trim('\0')}\nband={song.Band.Trim('\0')}\nyear={song.Date}\nlength={song.Length}\npreview_start={song.PreviewStart}\npreview_length={song.PreviewLength}";
@@ -410,7 +410,8 @@ namespace NDS{
                                     break;
                             }
                         }
-                        song[songFile.ID].SetBytes(bytes, true);
+                        Asset asset = (Asset)song[songFile.ID];
+                        asset.SetBytes(bytes, true);
                     }
                 });
                 
