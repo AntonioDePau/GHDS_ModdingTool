@@ -347,7 +347,19 @@ namespace NDS{
                         if(showEdited) Console.WriteLine(editedString);
                     });
                 }else{
-                    string metadata_text = $"[metadata]\ntitle={song.Title.Trim('\0')}\nband={song.Band.Trim('\0')}\nyear={song.Date}\nlength={song.Length}\npreview_start={song.PreviewStart}\npreview_length={song.PreviewLength}";
+                    string metadata_text = "[metadata]\n";
+                    metadata_text += $"# Title of the song: up to 20 characters (even less than 20 might cause display issues)\n";
+                    metadata_text += $"title={song.Title.Trim('\0')}\n";
+                    metadata_text += $"# Band name (same rules as title)\n";
+                    metadata_text += $"band={song.Band.Trim('\0')}\n";
+                    metadata_text += $"# The date the song was released (4 digit year, eg: 1998)\n";
+                    metadata_text += $"year={song.Date}\n";
+                    metadata_text += $"# Length of the song (in seconds)\n";
+                    metadata_text += $"length={song.Length}\n";
+                    metadata_text += $"# Time the preview of the song starts (in milliseconds)\n";
+                    metadata_text += $"preview_start={song.PreviewStart}\n";
+                    metadata_text += $"# Length of the preview of the song (in milliseconds)\n";
+                    metadata_text += $"preview_length={song.PreviewLength}";
                     File.WriteAllText(metadata, metadata_text);
                 }
                 
