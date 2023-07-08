@@ -157,7 +157,7 @@ namespace NDS{
             }
         }
         
-        public void ToString(){
+        public void Print(){
             Console.WriteLine($"{Band} - {Title} [{Date}] (preview plays from {PreviewStart} for {PreviewLength})");
         }
     }

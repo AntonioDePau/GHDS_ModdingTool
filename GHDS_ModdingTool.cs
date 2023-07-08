@@ -28,6 +28,7 @@ namespace GHDS_ModdingTool{
                 if(number > max || number < min) number = -1;
                 return number;
             }catch(Exception e){
+                e.ToString();
                 return -1;
             }
         }

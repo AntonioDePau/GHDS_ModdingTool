@@ -26,7 +26,7 @@ namespace NDS{
             Index = index;
         }
         
-        public string ToString(){
+        public string Print(){
             uint index        = (uint)Index;
             uint offset       = (uint)Offset;
             uint hash         = (uint)Hash;
