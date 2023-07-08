@@ -515,7 +515,7 @@ namespace NDS{
                     string Crowd = customFiles.Find(x => Path.GetFileName(x).Contains("crowd.ogg"));
                     if(Lyrics == null){
                         Console.WriteLine("  No vocals could be found!");
-                        return File.ReadAllBytes(filename);
+                        return Ogg.Decode(filename);
                     }
                     
                     bytes.Add(Ogg.Decode(filename));
@@ -532,7 +532,7 @@ namespace NDS{
                     List<string> Drums = customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
                     if(Drums.Count <= 1){
                         Console.WriteLine("  No additional drums tracks could be found!");
-                        return File.ReadAllBytes(filename);
+                        return Ogg.Decode(filename);
                     }
                     
                     Drums.ForEach(d => bytes.Add(Ogg.Decode(d)));
