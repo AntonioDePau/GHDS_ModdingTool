@@ -27,6 +27,16 @@ custom_songs
 The metadata.txt files contain information such as the title of the song, the band's name, year it was released, etc.
 Simply open it with any text editor, update the information, and save the file.
 
+Notes:
+| Property       | Description                         | Rules                                                              |
+| -------------- | ----------------------------------- | ------------------------------------------------------------------ |
+| title          | Title of the song                   | Up to 20 characters (even less than 20 might cause display issues) |
+| band           | Band name                           | Up to 20 characters (even less than 20 might cause display issues) |
+| year           | The date the song was released on   | 4 digit year (eg: 1998)                                            |
+| length         | Length of the song                  | In seconds                                                         |
+| preview_start  | Time the preview of the song starts | In milliseconds                                                    |
+| preview_length | Length of the preview of the song   | In milliseconds                                                    |
+
 ### Update song assets
 The actual song files are the ones with the following formats:
 - .hwas (song main track, and drums track in Band Hero)
@@ -60,7 +70,7 @@ Here is the list of possible files to replace:
 
 To replace a file, simply place the new file in the song's folder.
 
-Note that instead of _song.hwas or _drums.hwas files, you can provide _song.wav or _drums.wav files.
+Note that instead of _song.hwas or _drums.hwas files, you can provide _song.wav or _drums.wav files, or even song.ogg, drums_1.ogg, etc.
 
 ### Apply the changes
 Once the song information and files have edited/updated, simply drag and drop a Guitar Hero or Band Hero game onto the executable again.
@@ -70,8 +80,9 @@ A new ROM will be created with all the changes you've made.
 - [x] Mod GHOTD, GHOTMH, and BH songs
 - [x] Make modding easier by making it possible to compress relevant files automatically
 - [x] Make modding easier by supporting other sound formats (.wav)
-- [ ] Make modding easier by supporting other sound formats (.ogg) **[CONSIDERED]**
-- [ ] Make modding easier by supporting other chart formats (.chart) **[PLANNED]**
+- [x] Make modding easier by supporting other sound formats (.ogg)
+- [x] Make modding easier by supporting other chart formats (.mid)
+- [ ] Make modding easier by supporting other chart formats (.chart) **[CONSIDERED]**
 
 ## Support
 If you need support for this tool, report an [issue](https://github.com/AntonioDePau/GHDS_MOddingTool/issues/new)

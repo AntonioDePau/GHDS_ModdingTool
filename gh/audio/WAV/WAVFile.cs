@@ -1817,7 +1817,7 @@ namespace WAV
         private void InitMembers()
         {
             mFilename = null;
-            mFileStream = null;
+            //mFileStream = null;
             mMemoryStream = null;
             mBinaryWriter = null;
             mWAVHeader = new char[4];
@@ -1986,7 +1986,7 @@ namespace WAV
         }
 
         private String mFilename;       // The name of the file open
-        private FileStream mFileStream; // For reading the audio file
+        //private FileStream mFileStream; // For reading the audio file
         private MemoryStream mMemoryStream;
         private BinaryWriter mBinaryWriter;
         // File header information

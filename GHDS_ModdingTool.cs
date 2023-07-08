@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using NDS;
+using OGG;
 
 namespace GHDS_ModdingTool{
     public class ModdingSettings{
@@ -28,6 +29,7 @@ namespace GHDS_ModdingTool{
                 if(number > max || number < min) number = -1;
                 return number;
             }catch(Exception e){
+                e.ToString();
                 return -1;
             }
         }
@@ -93,6 +95,7 @@ namespace GHDS_ModdingTool{
     public class GHDS_ModdingTool{
         static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
         static string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
+        static string[] EmbeddedResources = ExecutingAssembly.GetManifestResourceNames().ToArray();
 
         static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args){
             
@@ -109,6 +112,32 @@ namespace GHDS_ModdingTool{
             }
         }
         
+        static void ExtractEmbeddedBinaries(){
+            var NeedExtraction = new List<string>(){
+                "oggdec.exe",
+                "oggenc.exe",
+                "libFLAC_dynamic.dll",
+                "libogg.dll",
+                "libvorbis.dll",
+                "libvorbisfile.dll"
+            };
+            
+            if(!Directory.Exists(resources_path)) Directory.CreateDirectory(resources_path);
+            
+            EmbeddedResources.ToList().ForEach(binaryName => {
+                if(NeedExtraction.Find(x => x == binaryName) == null) return;
+                
+                string extraction_path = Path.Combine(resources_path, binaryName);
+                if(File.Exists(extraction_path)) return;
+                
+                using(var stream = ExecutingAssembly.GetManifestResourceStream(binaryName)){
+                    var bytes = new byte[stream.Length];
+                    stream.Read(bytes, 0, bytes.Length);
+                    File.WriteAllBytes(extraction_path, bytes);
+                }
+            });
+        }
+        
         static GHDS_ModdingTool(){
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
         }
@@ -119,13 +148,21 @@ namespace GHDS_ModdingTool{
         public static ModdingSettings moddingSettings = new ModdingSettings();
         
         public static string version = "";
+        public static string product_name = "GHDS_ModdingTool";
+        public static string resources_path = Path.Combine(Path.GetDirectoryName(ExecutingAssembly.Location), $"{product_name}_resources");
         [STAThread]
         static void Main(string[] args){
+            ExtractEmbeddedBinaries();
+            Ogg.ToolsPath = resources_path;
             if(Environment.OSVersion.Version.Major >= 6) SetProcessDPIAware();
             FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(ExecutingAssembly.Location);
             version = "v" + fvi.ProductVersion;
             
-            Console.Title = $"GHDS_ModdingTool [{version}]";
+            Console.Title = $"{product_name} [{version}]";
+            
+            //Charts.ParseMidi("sample_song_midi");
+            //Console.ReadLine();
+            //return;
             
             ParseArgs(args);
             if(moddingSettings.NDSFiles.Count == 0){

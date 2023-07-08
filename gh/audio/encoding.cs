@@ -4,6 +4,7 @@ using System.Text;
 using System.IO;
 using WAV;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using NAudio;
 using System.Collections;
 
@@ -11,6 +12,55 @@ namespace ImaAdpcm{
     // Credits to https://github.com/eurotools/es-ima-adpcm-encoder-decoder
     
     public static class ImaCodec{
+        
+        public static byte[] Merge(List<byte[]> bytes){
+            List<ISampleProvider> sources = new List<ISampleProvider>();
+            
+            bytes.ForEach(file => {
+                WAVFile wav = new WAVFile();
+                wav.OpenBytes(file, WAVFile.WAVFileMode.READ);
+                
+                var wavFormat = new WaveFormat(wav.SampleRateHz, wav.BitsPerSample, wav.NumChannels);
+                
+                var ms = new MemoryStream(wav.ReadAllBytes());
+                var reader = new RawSourceWaveStream(ms, wavFormat);
+                //var waveStream = WaveFormatConversionStream.CreatePcmStream(reader);
+                //var channel = new WaveChannel32(waveStream){
+                //    //Set the volume
+                //    Volume = 0.5f
+                //};
+                sources.Add(reader.ToSampleProvider());
+                //Console.WriteLine("Mixed");
+            });
+            
+            using(MemoryStream gms = new MemoryStream()){
+                var mixer = new MixingSampleProvider(sources.ToArray());
+                WAVFile wav = CreateNewWavFile(new SampleToWaveProvider16(mixer));
+                return wav.ReadAllBytes();
+            }
+        }
+        
+        private static WAVFile CreateNewWavFile(IWaveProvider sourceProvider){
+            using(MemoryStream wavData = new MemoryStream()){
+                var ByteCount = 0;
+                var readBuffer = new byte[1024];
+                WaveFileWriter wfw = new WaveFileWriter(wavData, sourceProvider.WaveFormat);
+                while((ByteCount = sourceProvider.Read(readBuffer, 0, readBuffer.Length)) != 0){
+                    wavData.Write(readBuffer, 0, ByteCount);
+                }
+                
+                using(BinaryWriter bw = new BinaryWriter(wavData)){
+                    bw.Seek(4, SeekOrigin.Begin);
+                    bw.Write((int)(wavData.Length - 8));
+                    bw.Seek((int)0x2A, SeekOrigin.Begin);
+                    bw.Write((int)(wavData.Length - 0x2E));
+                    
+                }
+                var wav = new WAVFile();
+                wav.OpenBytes(wavData.ToArray(), WAVFile.WAVFileMode.READ);
+                return wav;
+            }
+        }
         
         public static byte[] Encode(byte[] WavBytes, int frequency){
             WAVFile wav = new WAVFile();
@@ -26,26 +76,7 @@ namespace ImaAdpcm{
             {
                 using (var resampler = new MediaFoundationResampler(reader, outFormat))
                 {
-                    
-                    using (MemoryStream wavData = new MemoryStream())
-                    {
-                        var ByteCount = 0;
-                        var readBuffer = new byte[1024];
-                        WaveFileWriter wfw = new WaveFileWriter(wavData, resampler.WaveFormat);
-                        while((ByteCount = resampler.Read(readBuffer, 0, readBuffer.Length)) != 0){
-                            wavData.Write(readBuffer, 0, ByteCount);
-                        }
-                        
-                        using(BinaryWriter bw = new BinaryWriter(wavData)){
-                            bw.Seek(4, SeekOrigin.Begin);
-                            bw.Write((int)(wavData.Length - 8));
-                            bw.Seek((int)0x2A, SeekOrigin.Begin);
-                            bw.Write((int)(wavData.Length - 0x2E));
-                            
-                        }
-                        wav = new WAVFile();
-                        wav.OpenBytes(wavData.ToArray(), WAVFile.WAVFileMode.READ);
-                    }
+                    wav = CreateNewWavFile(resampler);
                 }
             }
             

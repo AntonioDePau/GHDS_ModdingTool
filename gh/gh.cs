@@ -7,6 +7,8 @@ using WAV;
 using HWAS;
 using ImaAdpcm;
 using GHDS_ModdingTool;
+using CHARTS;
+using OGG;
 
 namespace NDS{
     public class Song{
@@ -59,9 +61,12 @@ namespace NDS{
         public int PreviewLengthOffset;
         public uint PreviewLength;
         
-        public Asset this[string s]{
+        public object this[string s]{
             get{
-                return (Asset)this.GetType().GetField(s).GetValue(this);
+                return (object)this.GetType().GetField(s).GetValue(this);
+            }
+            set{
+                this.GetType().GetField(s).SetValue(this, value);
             }
         }
         
@@ -154,7 +159,7 @@ namespace NDS{
             }
         }
         
-        public void ToString(){
+        public void Print(){
             Console.WriteLine($"{Band} - {Title} [{Date}] (preview plays from {PreviewStart} for {PreviewLength})");
         }
     }
@@ -168,7 +173,10 @@ namespace NDS{
         public bool HasDrums;
         
         public uint HWASSampleRate;
-        public uint OGGSampleRate;
+        public uint OGGRhythmSampleRate;
+        public uint OGGGuitarSampleRate;
+        public uint OGGBitRate;
+        public OGG.Format OggFormat;
         
         public GHGAME(string id, string name, string region, string languages){
             ID = id;
@@ -178,23 +186,38 @@ namespace NDS{
             Languages = languages;
             IsDemo = ID.StartsWith("Y");
             HWASSampleRate = (uint)(HasDrums ? 19020 : 19996);
-            OGGSampleRate = (uint)(HasDrums ? 15000 : 14961);
+            OGGRhythmSampleRate = (uint)(HasDrums ? 12000 : 14961);
+            OGGGuitarSampleRate = (uint)(HasDrums ? 15000 : 14961);
+            OGGBitRate = 18000;
+            OggFormat = new OGG.Format((int)OGGRhythmSampleRate, (int)OGGBitRate);
         }
     }
        
     public class SongFile{
-        public string Name;
+        public List<string> Name;
         public string ID;
         public List<string> Extensions;
         public string OriginalExtension;
         public string FoundExtension;
         public ModdingSettings moddingSettings;
         
-        public SongFile(string name, List<string> extensions, string id){
+        public SongFile(List<string> name, List<string> extensions, string id){
             Name = name;
             ID = id;
             Extensions = extensions;
             OriginalExtension = Extensions[0];
+        }
+    }
+    
+    public class SongInfo{
+        public string Name;
+        public List<string> Keys;
+        public string Type;
+        
+        public SongInfo(string name, List<string> keys, string type = "string"){
+                Name = name;
+                Keys = keys;
+                Type = type;
         }
     }
 
@@ -267,6 +290,17 @@ namespace NDS{
             }).ToList();
             
             bool changes = false;
+                
+            List<SongInfo> SongInformation = new List<SongInfo>{
+                new SongInfo("Title", new List<string>{"title","name"}),
+                new SongInfo("Band", new List<string>{"band","artist"}),
+                new SongInfo("Length", new List<string>{"length","song_length"}, "int"),
+                new SongInfo("Date", new List<string>{"date","year"}, "int"),
+                new SongInfo("PreviewStart", new List<string>{"perview_start","preview_start_time"}, "int"),
+                new SongInfo("PreviewLength", new List<string>{"preview_length","song_length"}, "int")
+            };
+            
+            Console.WriteLine(" ");
             
             SongNames.ForEach(x => {
                 List<Asset> assets = SongAssets.FindAll(y => y.Name.StartsWith(x));
@@ -278,8 +312,13 @@ namespace NDS{
                 
                 string custom_song_folder = Path.Combine(custom_songs_path, song.ID);
                 Directory.CreateDirectory(custom_song_folder);
-                                
+                
                 string metadata = Path.Combine(custom_song_folder, "metadata.txt");
+                string songIni = Path.Combine(custom_song_folder, "song.ini");
+                if(File.Exists(songIni)){
+                    Charts.ParseMidi(custom_song_folder);
+                    metadata = songIni;
+                }
                 
                 if(File.Exists(metadata)){
                     List<string> lines = File.ReadAllLines(metadata).ToList();
@@ -288,114 +327,102 @@ namespace NDS{
                         string[] pair = line.Split('=');
                         string key = pair[0].Trim();
                         string val = pair[1].Trim().Trim('\0');
+                        
+                        SongInfo songInfo = SongInformation.Find(x => x.Keys.Contains(key));
+                        if(songInfo == null) return;
+                        
+                        string editedString = "";
+                        
                         uint parsedValue;
-                        switch(key){
-                            case "title":
-                                if(song.Title.Trim('\0') != val){
-                                    if(val.Length > 0x20){
-                                        val = val.Substring(0, 0x20);
-                                        Console.WriteLine($"Title was trimmed down to 32 characters: {val}");
-                                    }
+                        switch(songInfo.Type){
+                            case "string":
+                                val = val.Substring(0, Math.Min(0x20, val.Length));
+                                string entry = (string)song[songInfo.Name];
+                                if(entry.Trim('\0') != val){
                                     edited = true;
-                                    if(showEdited) Console.WriteLine($"   _{song.Title}_ => _{val}_");
+                                    editedString = $"   {entry} => {val}";
+                                    song[songInfo.Name] = val;
                                 }
-                                song.Title = val;
                                 break;
-                            case "band":
-                                if(song.Band.Trim('\0') != val){
-                                    if(val.Length > 0x20){
-                                        val = val.Substring(0, 0x20);
-                                        Console.WriteLine($"Band name was trimmed down to 32 characters: {val}");
-                                    }
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   _{song.Band}_ => _{val}_");
+                            case "int":
+                                parsedValue = 0;
+                                UInt32.TryParse(val, out parsedValue);
+                                if(metadata == songIni){
+                                    if(songInfo.Name == "Length") parsedValue = (uint)Math.Round((double)(parsedValue / 1000));
                                 }
-                                song.Band = val;
-                                break;
-                            case "length":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.Length != parsedValue){
+                                uint intentry = (uint)song[songInfo.Name];
+                                if(intentry != parsedValue){
                                     edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.Length} => {val}");
+                                    editedString = $"   {intentry} => {parsedValue}";
+                                    song[songInfo.Name] = parsedValue;
                                 }
-                                song.Length = parsedValue;
-                                break;
-                            case "year":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.Date != parsedValue){
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.Date} => {parsedValue}");
-                                }
-                                song.Date = parsedValue;
-                                break;
-                            case "preview_start":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.PreviewStart != parsedValue){
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.PreviewStart} => {parsedValue}");
-                                }
-                                song.PreviewStart = parsedValue;
-                                break;
-                            case "preview_length":
-                                parsedValue = UInt32.Parse(val);
-                                if(song.PreviewLength != parsedValue){
-                                    edited = true;
-                                    if(showEdited) Console.WriteLine($"   {song.PreviewLength} => {parsedValue}");
-                                }
-                                song.PreviewLength = parsedValue;
                                 break;
                         }
+                        if(showEdited) Console.WriteLine(editedString);
                     });
                 }else{
-                    string metadata_text = $"[metadata]\ntitle={song.Title.Trim('\0')}\nband={song.Band.Trim('\0')}\nyear={song.Date}\nlength={song.Length}\npreview_start={song.PreviewStart}\npreview_length={song.PreviewLength}";
+                    string metadata_text = "[metadata]\n";
+                    metadata_text += $"# Title of the song: up to 20 characters (even less than 20 might cause display issues)\n";
+                    metadata_text += $"title={song.Title.Trim('\0')}\n";
+                    metadata_text += $"# Band name (same rules as title)\n";
+                    metadata_text += $"band={song.Band.Trim('\0')}\n";
+                    metadata_text += $"# The date the song was released (4 digit year, eg: 1998)\n";
+                    metadata_text += $"year={song.Date}\n";
+                    metadata_text += $"# Length of the song (in seconds)\n";
+                    metadata_text += $"length={song.Length}\n";
+                    metadata_text += $"# Time the preview of the song starts (in milliseconds)\n";
+                    metadata_text += $"preview_start={song.PreviewStart}\n";
+                    metadata_text += $"# Length of the preview of the song (in milliseconds)\n";
+                    metadata_text += $"preview_length={song.PreviewLength}";
                     File.WriteAllText(metadata, metadata_text);
                 }
                 
+                if(edited){
+                    Helpers.UpdateLine($"Data replacement detected: {song.ID} - song information\n\n");
+                }
+                
                 List<SongFile> SongFiles = new List<SongFile>{
-                    new SongFile("_song", new List<string>{"hwas", "wav"}, "Main"),
-                    new SongFile("_rhythm", new List<string>{"ogg"}, "Rhythm"),
-                    new SongFile("_guitar", new List<string>{"ogg"}, "Guitar"),
-                    new SongFile("_drums", new List<string>{"hwas", "wav"}, "Drums"),
-                    new SongFile("_gems_easy", new List<string>{"qgm"}, "GuitarNotesEasy"),
-                    new SongFile("_gems_med", new List<string>{"qgm"}, "GuitarNotesMedium"),
-                    new SongFile("_gems_hard", new List<string>{"qgm"}, "GuitarNotesHard"),
-                    new SongFile("_gems_expert", new List<string>{"qgm"}, "GuitarNotesExpert"),
-                    new SongFile("_gems_bass_easy", new List<string>{"qgm"}, "BassNotesEasy"),
-                    new SongFile("_gems_bass_med", new List<string>{"qgm"}, "BassNotesMedium"),
-                    new SongFile("_gems_bass_hard", new List<string>{"qgm"}, "BassNotesHard"),
-                    new SongFile("_gems_bass_expert", new List<string>{"qgm"}, "BassNotesExpert"),
-                    new SongFile("_gems_drum_easy", new List<string>{"qgm"}, "DrumNotesEasy"),
-                    new SongFile("_gems_drum_med", new List<string>{"qgm"}, "DrumNotesMedium"),
-                    new SongFile("_gems_drum_hard", new List<string>{"qgm"}, "DrumNotesHard"),
-                    new SongFile("_gems_drum_expert", new List<string>{"qgm"}, "DrumNotesExpert"),
-                    new SongFile("_vocal_lyrics", new List<string>{"qb"}, "VocalLyrics"),
-                    new SongFile("_vocal_note_range", new List<string>{"qb"}, "VocalNoteRange"),
-                    new SongFile("_vocal_notes", new List<string>{"qb"}, "VocalNotes"),
-                    new SongFile("_vocal_phrases", new List<string>{"qb"}, "VocalPhrases"),
+                    new SongFile(new List<string>{"_song", "song."}, new List<string>{"hwas", "wav", "ogg"}, "Main"),
+                    new SongFile(new List<string>{"_rhythm", "rhythm."}, new List<string>{"ogg"}, "Rhythm"),
+                    new SongFile(new List<string>{"_guitar", "guitar."}, new List<string>{"ogg"}, "Guitar"),
+                    new SongFile(new List<string>{"_drums", "drums_"}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
+                    new SongFile(new List<string>{"_gems_easy"}, new List<string>{"qgm"}, "GuitarNotesEasy"),
+                    new SongFile(new List<string>{"_gems_med"}, new List<string>{"qgm"}, "GuitarNotesMedium"),
+                    new SongFile(new List<string>{"_gems_hard"}, new List<string>{"qgm"}, "GuitarNotesHard"),
+                    new SongFile(new List<string>{"_gems_expert"}, new List<string>{"qgm"}, "GuitarNotesExpert"),
+                    new SongFile(new List<string>{"_gems_bass_easy"}, new List<string>{"qgm"}, "BassNotesEasy"),
+                    new SongFile(new List<string>{"_gems_bass_med"}, new List<string>{"qgm"}, "BassNotesMedium"),
+                    new SongFile(new List<string>{"_gems_bass_hard"}, new List<string>{"qgm"}, "BassNotesHard"),
+                    new SongFile(new List<string>{"_gems_bass_expert"}, new List<string>{"qgm"}, "BassNotesExpert"),
+                    new SongFile(new List<string>{"_gems_drum_easy"}, new List<string>{"qgm"}, "DrumNotesEasy"),
+                    new SongFile(new List<string>{"_gems_drum_med"}, new List<string>{"qgm"}, "DrumNotesMedium"),
+                    new SongFile(new List<string>{"_gems_drum_hard"}, new List<string>{"qgm"}, "DrumNotesHard"),
+                    new SongFile(new List<string>{"_gems_drum_expert"}, new List<string>{"qgm"}, "DrumNotesExpert"),
+                    new SongFile(new List<string>{"_vocal_lyrics"}, new List<string>{"qb"}, "VocalLyrics"),
+                    new SongFile(new List<string>{"_vocal_note_range"}, new List<string>{"qb"}, "VocalNoteRange"),
+                    new SongFile(new List<string>{"_vocal_notes"}, new List<string>{"qb"}, "VocalNotes"),
+                    new SongFile(new List<string>{"_vocal_phrases"}, new List<string>{"qb"}, "VocalPhrases"),
                     //new SongFile("_timesig.qsig", new List<string>{"qsig"}, "TimeSignature")
-                    new SongFile("_frets", new List<string>{"qft"}, "Frets")
+                    new SongFile(new List<string>{"_frets"}, new List<string>{"qft"}, "Frets")
                 };
                 
                 List<string> byteFiles = Directory.GetFiles(custom_song_folder).ToList();
                 
                 SongFiles.ForEach(songFile => {
                     //Console.WriteLine("Looking for: " + byteFileName);
-                    string byteFile = byteFiles.Find(bf => {
-                        return songFile.Extensions.Find(ext => {
-                           bool found = bf.EndsWith($"{songFile.Name}.{ext}");
-                           if(found){
-                               songFile.FoundExtension = ext;
-                           }
-                           return found;
-                        }) != null;
-                    });
+                    string byteFile = GetCustomFile(songFile, byteFiles);
+                    string convertedFile = Path.Combine(custom_song_folder, songFile.ID + songFile.Name[0]);
                     
-                    if(byteFile != null && song[songFile.ID] != null){
-                        Console.WriteLine($"Asset replacement detected for: {song.ID}{songFile.Name} => {Path.GetFileName(byteFile)}");
+                    if(byteFile != "" && song[songFile.ID] != null){
+                        Helpers.UpdateLine($"Data replacement detected: {song.ID}{songFile.Name[0]}.{songFile.OriginalExtension} => {Path.GetFileName(byteFile)}\n\n");
+                        //Console.WriteLine("");
                         edited = true;
-                        byte[] bytes = File.ReadAllBytes(byteFile);
-                        if(songFile.FoundExtension != songFile.OriginalExtension){
-                            Console.WriteLine($"This file requires conversion: {songFile.FoundExtension} => {songFile.OriginalExtension}");
+                        bool isCorrectFormat = songFile.FoundExtension == songFile.OriginalExtension;
+                        
+                        byte[] bytes = GetAndMergeTracks(songFile, byteFiles, isCorrectFormat);
+                        
+                        if(!isCorrectFormat){
+                            Helpers.UpdateLine($"  Converting file...");
                             switch(songFile.OriginalExtension){
                                 case "hwas":
                                     int hwasSampleRate = (int)ghgame.HWASSampleRate;
@@ -406,24 +433,114 @@ namespace NDS{
                                     
                                     HwasFile hwas = new HwasFile(WAVbytes, hwasSampleRate);
                                     bytes = hwas.GetAllBytes();
-                                    File.WriteAllBytes(byteFile + ".hwas", bytes);
+                                    File.WriteAllBytes(convertedFile + ".hwas", bytes);
+                                    break;
+                                case "ogg":                                    
+                                    var format = Ogg.GetFormat(bytes);
+                                    format.Filename = Path.GetFileName(byteFile);
+                                    format.ToString();
+                                    Console.ReadLine();
                                     break;
                             }
+                        }else{
+                            if(songFile.OriginalExtension == "ogg"){       
+                                var format = Ogg.GetFormat(bytes);
+                                var ghFormat = ghgame.OggFormat.Clone();
+                                if(songFile.Name[0] == "_guitar") ghFormat.SampleRate = (int)ghgame.OGGGuitarSampleRate;
+                                
+                                if(!format.Matches(ghFormat)){
+                                    Helpers.UpdateLine("  Converting file...");
+                                    byte[] wav = Ogg.Decode(bytes);
+                                    bytes = Ogg.Encode(wav, ghFormat.SampleRate, (int)Math.Round((double)(ghFormat.NominalBitRate / 1000)));
+                                    
+                                    File.WriteAllBytes(convertedFile + ".ogg", bytes);
+                                }
+                            }
                         }
-                        song[songFile.ID].SetBytes(bytes, true);
+                        Asset asset = (Asset)song[songFile.ID];
+                        asset.SetBytes(bytes, true);
                     }
                 });
                 
                 if(edited){
-                    Console.WriteLine($"{song.ID} updated!\n");
+                    //Console.WriteLine($"{song.ID} updated!\n");
                     changes = true;
                 }
+                Helpers.UpdateLine("");
             });
             if(!custom_songs_path_created && !changes){
                 Console.WriteLine($"A custom_songs folder was found for this game ({gameName}), but no changes have been detected...");
                 Console.WriteLine($"Please edit a metadata.txt file or add new song assets and try again!\n");
             }
             return custom_songs_path_created || !changes;
+        }
+        
+        private static string GetCustomFile(SongFile songFile, List<string> byteFiles){
+            string byteFile = "";
+            bool found = false;
+            
+            songFile.Extensions.ForEach(ext => {
+                List<string> files = byteFiles.Where(file => file.EndsWith(ext)).ToList();
+                
+                songFile.Name.ForEach(name => {
+                    files.ForEach(file => {
+                        if(found) return;
+                        if(Path.GetFileName(file).Contains(name)){
+                            byteFile = file;
+                            songFile.FoundExtension = ext;
+                            found = true;
+                        }
+                    });
+                });
+            });
+            
+            return byteFile;
+        }
+        
+        private static byte[] MergeTracks(List<byte[]> bytes){
+            return ImaCodec.Merge(bytes);
+        }
+        
+        private static byte[] GetAndMergeTracks(SongFile songFile, List<string> customFiles, bool isCorrectFormat){
+            string filename = GetCustomFile(songFile, customFiles);
+            
+            if(isCorrectFormat) return File.ReadAllBytes(filename);
+            
+            List<byte[]> bytes = new List<byte[]>();
+            
+            switch(songFile.Name[0]){
+                case "_song":
+                    Helpers.UpdateLine("  Merging song file with vocals...");
+                    string Lyrics = customFiles.Find(x => Path.GetFileName(x).Contains("vocals.ogg"));
+                    string Crowd = customFiles.Find(x => Path.GetFileName(x).Contains("crowd.ogg"));
+                    if(Lyrics == null){
+                        Console.WriteLine("  No vocals could be found!");
+                        return File.ReadAllBytes(filename);
+                    }
+                    
+                    bytes.Add(Ogg.Decode(filename));
+                    bytes.Add(Ogg.Decode(Lyrics));
+                    
+                    if(Crowd != null){
+                        bytes.Add(Ogg.Decode(Crowd));
+                    }
+                    
+                    return MergeTracks(bytes);
+                case "_drums":
+                    Helpers.UpdateLine("  Merging drums tracks...");
+                    var regex = new System.Text.RegularExpressions.Regex(@"drums_([0-9]+).ogg");
+                    List<string> Drums = customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
+                    if(Drums.Count <= 1){
+                        Console.WriteLine("  No additional drums tracks could be found!");
+                        return File.ReadAllBytes(filename);
+                    }
+                    
+                    Drums.ForEach(d => bytes.Add(Ogg.Decode(d)));
+                    
+                    return MergeTracks(bytes);
+                default:
+                    return File.ReadAllBytes(filename);
+            }
         }
         
         public static List<string> R12s = new List<string>();

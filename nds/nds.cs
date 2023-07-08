@@ -86,7 +86,7 @@ namespace NDS{
             
             IsCompressed = bytes.Length != DecompressedSize;
             if(edited && OriginalIsCompressed != IsCompressed){
-                Console.WriteLine($"Original is{(OriginalIsCompressed ? "" : " not")} compressed but new is{(IsCompressed ? "" : " not")}: {Name}");
+                Helpers.UpdateLine($"  Compressing file...");
                 IsCompressed = true;
                 Bytes = LZ10.Compress(DecompressedBytes);
             }

@@ -164,6 +164,7 @@ public static class LZ10{
                 byte[] furtherDecompressed = DecompressChunk(decompressed);
                 decompressed = furtherDecompressed;
             }catch(Exception e){
+                e.ToString();
                 // Looks like it was not double compressed...
             }
             

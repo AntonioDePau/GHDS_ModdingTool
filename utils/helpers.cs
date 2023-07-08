@@ -5,6 +5,13 @@ using System.Text;
 using System.Collections.Generic;
 
 public static class Helpers{
+    public static void UpdateLine(string text){
+        int paddingLength = Console.BufferWidth - text.Length;
+        string padding = new String(' ', paddingLength);
+        Console.SetCursorPosition(0, Console.CursorTop - 1);
+        Console.Write($"{text}{padding}");
+    }
+    
     public static uint BytesToUInt24(byte[] bytes){
         bytes = bytes.Concat(new byte[1]{0x00}).ToArray();
         //Array.Reverse(bytes);
