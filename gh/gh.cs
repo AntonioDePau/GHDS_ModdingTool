@@ -7,6 +7,7 @@ using WAV;
 using HWAS;
 using ImaAdpcm;
 using GHDS_ModdingTool;
+using CHARTS;
 
 namespace NDS{
     public class Song{
@@ -305,7 +306,10 @@ namespace NDS{
                 
                 string metadata = Path.Combine(custom_song_folder, "metadata.txt");
                 string songIni = Path.Combine(custom_song_folder, "song.ini");
-                if(File.Exists(songIni)) metadata = songIni;
+                if(File.Exists(songIni)){
+                    Charts.ParseMidi(custom_song_folder);
+                    metadata = songIni;
+                }
                 
                 if(File.Exists(metadata)){
                     List<string> lines = File.ReadAllLines(metadata).ToList();
@@ -332,7 +336,8 @@ namespace NDS{
                                 }
                                 break;
                             case "int":
-                                parsedValue = Math.Max(0, UInt32.Parse(val));
+                                parsedValue = 0;
+                                UInt32.TryParse(val, out parsedValue);
                                 if(metadata == songIni){
                                     if(songInfo.Name == "Length") parsedValue = (uint)Math.Round((double)(parsedValue / 1000));
                                 }
