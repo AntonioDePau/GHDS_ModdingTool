@@ -300,6 +300,8 @@ namespace NDS{
                 new SongInfo("PreviewLength", new List<string>{"preview_length","song_length"}, "int")
             };
             
+            Console.WriteLine(" ");
+            
             SongNames.ForEach(x => {
                 List<Asset> assets = SongAssets.FindAll(y => y.Name.StartsWith(x));
                 Song song = new Song(x, assets, ARM9, ghgame.HasDrums);
@@ -375,6 +377,10 @@ namespace NDS{
                     File.WriteAllText(metadata, metadata_text);
                 }
                 
+                if(edited){
+                    Helpers.UpdateLine($"Data replacement detected: {song.ID} - song information\n\n");
+                }
+                
                 List<SongFile> SongFiles = new List<SongFile>{
                     new SongFile(new List<string>{"_song", "song."}, new List<string>{"hwas", "wav", "ogg"}, "Main"),
                     new SongFile(new List<string>{"_rhythm", "rhythm."}, new List<string>{"ogg"}, "Rhythm"),
@@ -407,15 +413,16 @@ namespace NDS{
                     string byteFile = GetCustomFile(songFile, byteFiles);
                     string convertedFile = Path.Combine(custom_song_folder, songFile.ID + songFile.Name[0]);
                     
-                        Console.WriteLine($"Asset replacement detected for: {song.ID}{songFile.Name} => {Path.GetFileName(byteFile)}");
                     if(byteFile != "" && song[songFile.ID] != null){
+                        Helpers.UpdateLine($"Data replacement detected: {song.ID}{songFile.Name[0]}.{songFile.OriginalExtension} => {Path.GetFileName(byteFile)}\n\n");
+                        //Console.WriteLine("");
                         edited = true;
-                            Console.WriteLine($"This file requires conversion: {songFile.FoundExtension} => {songFile.OriginalExtension}");
                         bool isCorrectFormat = songFile.FoundExtension == songFile.OriginalExtension;
                         
                         byte[] bytes = GetAndMergeTracks(songFile, byteFiles, isCorrectFormat);
                         
                         if(!isCorrectFormat){
+                            Helpers.UpdateLine($"  Converting file...");
                             switch(songFile.OriginalExtension){
                                 case "hwas":
                                     int hwasSampleRate = (int)ghgame.HWASSampleRate;
@@ -442,6 +449,7 @@ namespace NDS{
                                 if(songFile.Name[0] == "_guitar") ghFormat.SampleRate = (int)ghgame.OGGGuitarSampleRate;
                                 
                                 if(!format.Matches(ghFormat)){
+                                    Helpers.UpdateLine("  Converting file...");
                                     byte[] wav = Ogg.Decode(bytes);
                                     bytes = Ogg.Encode(wav, ghFormat.SampleRate, (int)Math.Round((double)(ghFormat.NominalBitRate / 1000)));
                                     
@@ -455,9 +463,10 @@ namespace NDS{
                 });
                 
                 if(edited){
-                    Console.WriteLine($"{song.ID} updated!\n");
+                    //Console.WriteLine($"{song.ID} updated!\n");
                     changes = true;
                 }
+                Helpers.UpdateLine("");
             });
             if(!custom_songs_path_created && !changes){
                 Console.WriteLine($"A custom_songs folder was found for this game ({gameName}), but no changes have been detected...");
@@ -501,6 +510,7 @@ namespace NDS{
             
             switch(songFile.Name[0]){
                 case "_song":
+                    Helpers.UpdateLine("  Merging song file with vocals...");
                     string Lyrics = customFiles.Find(x => Path.GetFileName(x).Contains("vocals.ogg"));
                     string Crowd = customFiles.Find(x => Path.GetFileName(x).Contains("crowd.ogg"));
                     if(Lyrics == null){
@@ -517,6 +527,7 @@ namespace NDS{
                     
                     return MergeTracks(bytes);
                 case "_drums":
+                    Helpers.UpdateLine("  Merging drums tracks...");
                     var regex = new System.Text.RegularExpressions.Regex(@"drums_([0-9]+).ogg");
                     List<string> Drums = customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
                     if(Drums.Count <= 1){
