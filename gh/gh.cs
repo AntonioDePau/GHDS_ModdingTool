@@ -13,6 +13,7 @@ using OGG;
 namespace NDS{
     public class Song{
         public string ID;
+        public string Hash;
         public string Name;
         
         public Asset Main;
@@ -72,6 +73,7 @@ namespace NDS{
         
         public Song(string song, List<Asset> assets, ARMFile arm9, bool isBandHero){
             ID = assets[0].Name.Split('_')[0];
+            Hash = Helpers.MD5(ID);
             Name = song;
             
             Main = assets.Find(x => x.Name.EndsWith("_song.hwas"));
@@ -310,7 +312,7 @@ namespace NDS{
                 bool edited = false;
                 bool showEdited = false;
                 
-                string custom_song_folder = Path.Combine(custom_songs_path, song.ID);
+                string custom_song_folder = GetCustomSongFolder(custom_songs_path, song);
                 Directory.CreateDirectory(custom_song_folder);
                 
                 string metadata = Path.Combine(custom_song_folder, "metadata.txt");
