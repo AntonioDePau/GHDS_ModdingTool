@@ -419,7 +419,7 @@ namespace NDS{
                         edited = true;
                         bool isCorrectFormat = songFile.FoundExtension == songFile.OriginalExtension;
                         
-                        byte[] bytes = GetAndMergeTracks(songFile, byteFiles, isCorrectFormat);
+                        byte[] bytes = GetAndMergeTracks(songFile, byteFiles, isCorrectFormat, ghgame);
                         
                         if(!isCorrectFormat){
                             Helpers.UpdateLine($"  Converting file...");
@@ -501,12 +501,18 @@ namespace NDS{
             return ImaCodec.Merge(bytes);
         }
         
-        private static byte[] GetAndMergeTracks(SongFile songFile, List<string> customFiles, bool isCorrectFormat){
+        private static List<string> GetDrumTracks(List<string> customFiles){
+            var regex = new System.Text.RegularExpressions.Regex(@"drums_([0-9]+).ogg");
+            return customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
+        }
+        
+        private static byte[] GetAndMergeTracks(SongFile songFile, List<string> customFiles, bool isCorrectFormat, GHGAME ghgame){
             string filename = GetCustomFile(songFile, customFiles);
             
             if(isCorrectFormat) return File.ReadAllBytes(filename);
             
             List<byte[]> bytes = new List<byte[]>();
+            List<string> Drums = new List<string>();
             
             switch(songFile.Name[0]){
                 case "_song":
@@ -521,6 +527,11 @@ namespace NDS{
                     bytes.Add(Ogg.Decode(filename));
                     bytes.Add(Ogg.Decode(Lyrics));
                     
+                    if(!ghgame.HasDrums){
+                        Drums = GetDrumTracks(customFiles);
+                        Drums.ForEach(x => bytes.Add(Ogg.Decode(x)));
+                    }
+                    
                     if(Crowd != null){
                         bytes.Add(Ogg.Decode(Crowd));
                     }
@@ -528,8 +539,7 @@ namespace NDS{
                     return MergeTracks(bytes);
                 case "_drums":
                     Helpers.UpdateLine("  Merging drums tracks...");
-                    var regex = new System.Text.RegularExpressions.Regex(@"drums_([0-9]+).ogg");
-                    List<string> Drums = customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
+                    Drums = GetDrumTracks(customFiles);
                     if(Drums.Count <= 1){
                         Console.WriteLine("  No additional drums tracks could be found!");
                         return Ogg.Decode(filename);
