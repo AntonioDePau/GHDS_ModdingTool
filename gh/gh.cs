@@ -383,7 +383,7 @@ namespace NDS{
                 
                 List<SongFile> SongFiles = new List<SongFile>{
                     new SongFile(new List<string>{"_song", "song."}, new List<string>{"hwas", "wav", "ogg"}, "Main"),
-                    new SongFile(new List<string>{"_rhythm", "rhythm."}, new List<string>{"ogg"}, "Rhythm"),
+                    new SongFile(new List<string>{"_rhythm", "rhythm.", "bass."}, new List<string>{"ogg"}, "Rhythm"),
                     new SongFile(new List<string>{"_guitar", "guitar."}, new List<string>{"ogg"}, "Guitar"),
                     new SongFile(new List<string>{"_drums", "drums_"}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
                     new SongFile(new List<string>{"_gems_easy"}, new List<string>{"qgm"}, "GuitarNotesEasy"),
