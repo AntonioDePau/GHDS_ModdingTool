@@ -453,6 +453,7 @@ namespace NDS{
                                 if(!format.Matches(ghFormat)){
                                     Helpers.UpdateLine("  Converting file...");
                                     byte[] wav = Ogg.Decode(bytes);
+                                    wav = ImaCodec.IncreaseVolume(wav, 1.5f);
                                     bytes = Ogg.Encode(wav, ghFormat.SampleRate, (int)Math.Round((double)(ghFormat.NominalBitRate / 1000)));
                                     
                                     File.WriteAllBytes(convertedFile + ".ogg", bytes);

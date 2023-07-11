@@ -45,7 +45,11 @@ namespace ImaAdpcm{
                 var ByteCount = 0;
                 var readBuffer = new byte[1024];
                 WaveFileWriter wfw = new WaveFileWriter(wavData, sourceProvider.WaveFormat);
-                while((ByteCount = sourceProvider.Read(readBuffer, 0, readBuffer.Length)) != 0){
+                
+                var volumeSampleProvider = new VolumeSampleProvider(sourceProvider.ToSampleProvider());
+                volumeSampleProvider.Volume = 1.5f;
+                
+                while((ByteCount = new SampleToWaveProvider16(volumeSampleProvider).Read(readBuffer, 0, readBuffer.Length)) != 0){
                     wavData.Write(readBuffer, 0, ByteCount);
                 }
                 
@@ -60,6 +64,22 @@ namespace ImaAdpcm{
                 wav.OpenBytes(wavData.ToArray(), WAVFile.WAVFileMode.READ);
                 return wav;
             }
+        }
+        
+        public static byte[] IncreaseVolume(byte[] WavBytes, float volume = 2.0f){
+            
+            WAVFile wav = new WAVFile();
+            wav.OpenBytes(WavBytes, WAVFile.WAVFileMode.READ);
+            
+            using (var msrsw = new MemoryStream(wav.ReadAllBytes()))
+            using (var reader = new RawSourceWaveStream(msrsw, new WaveFormat(wav.SampleRateHz, wav.BitsPerSample, wav.NumChannels)))
+            {
+                var volumeSampleProvider = new VolumeSampleProvider(reader.ToSampleProvider());
+                volumeSampleProvider.Volume = volume;
+                wav = CreateNewWavFile(new SampleToWaveProvider16(volumeSampleProvider));
+            }
+            
+            return wav.ReadAllBytes();
         }
         
         public static byte[] Encode(byte[] WavBytes, int frequency){
