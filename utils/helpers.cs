@@ -57,6 +57,15 @@ public static class Helpers{
         return PadBytes(bytes, paddingSize, paddingValue);
     }
     
+    public static string MD5(string input){
+        using(System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create()){
+            byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(input);
+            byte[] hashBytes = md5.ComputeHash(inputBytes);
+
+            return BitConverter.ToString(hashBytes).Replace("-", string.Empty);
+        }
+    }
+    
     public static ushort CRC16(byte[] bytes){
 		ushort crc = 0xffff;
 

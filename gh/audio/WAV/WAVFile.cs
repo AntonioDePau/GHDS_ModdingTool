@@ -2010,5 +2010,10 @@ namespace WAV
 
         // Static members
         private static short mDataStartPos; // The byte position of the start of the audio data
+        
+        private static byte[] DummyBytes = GHDS_ModdingTool.GHDS_ModdingTool.GetEmbeddedResource("dummy.wav");
+        public static byte[] GetDummyBytes(){
+            return DummyBytes;
+        }
     }
 }

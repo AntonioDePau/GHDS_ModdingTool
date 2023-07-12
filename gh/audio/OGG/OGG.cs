@@ -98,6 +98,11 @@ namespace OGG{
             string Arguments = $" -";
             return new Format(oggFile);
         }
+        
+        private static byte[] DummyBytes = GHDS_ModdingTool.GHDS_ModdingTool.GetEmbeddedResource("dummy.ogg");
+        public static byte[] GetDummyBytes(){
+            return DummyBytes;
+        }
     }
     
     public class Format{

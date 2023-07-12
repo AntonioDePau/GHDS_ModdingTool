@@ -35,16 +35,23 @@ namespace ImaAdpcm{
             
             using(MemoryStream gms = new MemoryStream()){
                 var mixer = new MixingSampleProvider(sources.ToArray());
-                WAVFile wav = CreateNewWavFile(new SampleToWaveProvider16(mixer));
+                WAVFile wav = CreateNewWavFile(new SampleToWaveProvider16(mixer), true);
                 return wav.ReadAllBytes();
             }
         }
         
-        private static WAVFile CreateNewWavFile(IWaveProvider sourceProvider){
+        private static WAVFile CreateNewWavFile(IWaveProvider sourceProvider, bool increaseVolume){
             using(MemoryStream wavData = new MemoryStream()){
                 var ByteCount = 0;
                 var readBuffer = new byte[1024];
                 WaveFileWriter wfw = new WaveFileWriter(wavData, sourceProvider.WaveFormat);
+                
+                if(increaseVolume){
+                    var volumeSampleProvider = new VolumeSampleProvider(sourceProvider.ToSampleProvider());
+                    volumeSampleProvider.Volume = 1.5f;
+                    sourceProvider = new SampleToWaveProvider16(volumeSampleProvider);
+                }
+                
                 while((ByteCount = sourceProvider.Read(readBuffer, 0, readBuffer.Length)) != 0){
                     wavData.Write(readBuffer, 0, ByteCount);
                 }
@@ -62,7 +69,23 @@ namespace ImaAdpcm{
             }
         }
         
-        public static byte[] Encode(byte[] WavBytes, int frequency){
+        public static byte[] IncreaseVolume(byte[] WavBytes, float volume = 2.0f){
+            
+            WAVFile wav = new WAVFile();
+            wav.OpenBytes(WavBytes, WAVFile.WAVFileMode.READ);
+            
+            using (var msrsw = new MemoryStream(wav.ReadAllBytes()))
+            using (var reader = new RawSourceWaveStream(msrsw, new WaveFormat(wav.SampleRateHz, wav.BitsPerSample, wav.NumChannels)))
+            {
+                var volumeSampleProvider = new VolumeSampleProvider(reader.ToSampleProvider());
+                volumeSampleProvider.Volume = volume;
+                wav = CreateNewWavFile(new SampleToWaveProvider16(volumeSampleProvider), true);
+            }
+            
+            return wav.ReadAllBytes();
+        }
+        
+        public static byte[] Encode(byte[] WavBytes, int frequency, bool increaseVolume = true){
             WAVFile wav = new WAVFile();
             wav.OpenBytes(WavBytes, WAVFile.WAVFileMode.READ);
             if(frequency == -1) frequency = wav.SampleRateHz;
@@ -76,7 +99,7 @@ namespace ImaAdpcm{
             {
                 using (var resampler = new MediaFoundationResampler(reader, outFormat))
                 {
-                    wav = CreateNewWavFile(resampler);
+                    wav = CreateNewWavFile(resampler, increaseVolume);
                 }
             }
             

@@ -42,6 +42,8 @@
     <EmbeddedResource Include="./embedded_binaries/libogg.dll" />
     <EmbeddedResource Include="./embedded_binaries/libvorbis.dll" />
     <EmbeddedResource Include="./embedded_binaries/libvorbisfile.dll" />
+    <EmbeddedResource Include="./embedded_resources/dummy.ogg" />
+    <EmbeddedResource Include="./embedded_resources/dummy.wav" />
 	<EmbeddedResource Include="./GHDS_ModdingTool.ico" />
   </ItemGroup>
   <PropertyGroup>

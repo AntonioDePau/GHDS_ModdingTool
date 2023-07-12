@@ -13,6 +13,7 @@ using OGG;
 namespace NDS{
     public class Song{
         public string ID;
+        public string Hash;
         public string Name;
         
         public Asset Main;
@@ -61,6 +62,11 @@ namespace NDS{
         public int PreviewLengthOffset;
         public uint PreviewLength;
         
+        public bool UseDummySong = false;
+        public bool UseDummyGuitar = false;
+        public bool UseDummyRhythm = false;
+        public bool UseDummyDrums = false;
+        
         public object this[string s]{
             get{
                 return (object)this.GetType().GetField(s).GetValue(this);
@@ -72,6 +78,7 @@ namespace NDS{
         
         public Song(string song, List<Asset> assets, ARMFile arm9, bool isBandHero){
             ID = assets[0].Name.Split('_')[0];
+            Hash = Helpers.MD5(ID);
             Name = song;
             
             Main = assets.Find(x => x.Name.EndsWith("_song.hwas"));
@@ -297,7 +304,11 @@ namespace NDS{
                 new SongInfo("Length", new List<string>{"length","song_length"}, "int"),
                 new SongInfo("Date", new List<string>{"date","year"}, "int"),
                 new SongInfo("PreviewStart", new List<string>{"perview_start","preview_start_time"}, "int"),
-                new SongInfo("PreviewLength", new List<string>{"preview_length","song_length"}, "int")
+                new SongInfo("PreviewLength", new List<string>{"preview_length","song_length"}, "int"),
+                new SongInfo("UseDummySong", new List<string>{"useDummySong"}, "bool"),
+                new SongInfo("UseDummyGuitar", new List<string>{"useDummyGuitar"}, "bool"),
+                new SongInfo("UseDummyRhythm", new List<string>{"useDummyRhythm"}, "bool"),
+                new SongInfo("UseDummyDrums", new List<string>{"useDummyDrums"}, "bool")
             };
             
             Console.WriteLine(" ");
@@ -310,7 +321,7 @@ namespace NDS{
                 bool edited = false;
                 bool showEdited = false;
                 
-                string custom_song_folder = Path.Combine(custom_songs_path, song.ID);
+                string custom_song_folder = GetCustomSongFolder(custom_songs_path, song);
                 Directory.CreateDirectory(custom_song_folder);
                 
                 string metadata = Path.Combine(custom_song_folder, "metadata.txt");
@@ -334,6 +345,7 @@ namespace NDS{
                         string editedString = "";
                         
                         uint parsedValue;
+                        bool parsedBool;
                         switch(songInfo.Type){
                             case "string":
                                 val = val.Substring(0, Math.Min(0x20, val.Length));
@@ -356,6 +368,11 @@ namespace NDS{
                                     editedString = $"   {intentry} => {parsedValue}";
                                     song[songInfo.Name] = parsedValue;
                                 }
+                                break;
+                            case "bool":
+                                parsedBool = false;
+                                Boolean.TryParse(val, out parsedBool);
+                                song[songInfo.Name] = parsedBool;
                                 break;
                         }
                         if(showEdited) Console.WriteLine(editedString);
@@ -383,7 +400,7 @@ namespace NDS{
                 
                 List<SongFile> SongFiles = new List<SongFile>{
                     new SongFile(new List<string>{"_song", "song."}, new List<string>{"hwas", "wav", "ogg"}, "Main"),
-                    new SongFile(new List<string>{"_rhythm", "rhythm."}, new List<string>{"ogg"}, "Rhythm"),
+                    new SongFile(new List<string>{"_rhythm", "rhythm.", "bass."}, new List<string>{"ogg"}, "Rhythm"),
                     new SongFile(new List<string>{"_guitar", "guitar."}, new List<string>{"ogg"}, "Guitar"),
                     new SongFile(new List<string>{"_drums", "drums_"}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
                     new SongFile(new List<string>{"_gems_easy"}, new List<string>{"qgm"}, "GuitarNotesEasy"),
@@ -413,53 +430,74 @@ namespace NDS{
                     string byteFile = GetCustomFile(songFile, byteFiles);
                     string convertedFile = Path.Combine(custom_song_folder, songFile.ID + songFile.Name[0]);
                     
-                    if(byteFile != "" && song[songFile.ID] != null){
-                        Helpers.UpdateLine($"Data replacement detected: {song.ID}{songFile.Name[0]}.{songFile.OriginalExtension} => {Path.GetFileName(byteFile)}\n\n");
-                        //Console.WriteLine("");
-                        edited = true;
-                        bool isCorrectFormat = songFile.FoundExtension == songFile.OriginalExtension;
-                        
-                        byte[] bytes = GetAndMergeTracks(songFile, byteFiles, isCorrectFormat);
-                        
-                        if(!isCorrectFormat){
-                            Helpers.UpdateLine($"  Converting file...");
-                            switch(songFile.OriginalExtension){
-                                case "hwas":
-                                    int hwasSampleRate = (int)ghgame.HWASSampleRate;
-                                    if(moddingSettings.KeepHWASUserSampleRate) hwasSampleRate = -1;
-                                    if(moddingSettings.HWASSampleRate > -1) hwasSampleRate = moddingSettings.HWASSampleRate;
-                                    
-                                    byte[] WAVbytes = ImaCodec.Encode(bytes, hwasSampleRate);
-                                    
-                                    HwasFile hwas = new HwasFile(WAVbytes, hwasSampleRate);
-                                    bytes = hwas.GetAllBytes();
-                                    File.WriteAllBytes(convertedFile + ".hwas", bytes);
-                                    break;
-                                case "ogg":                                    
-                                    var format = Ogg.GetFormat(bytes);
-                                    format.Filename = Path.GetFileName(byteFile);
-                                    format.ToString();
-                                    Console.ReadLine();
-                                    break;
-                            }
-                        }else{
-                            if(songFile.OriginalExtension == "ogg"){       
-                                var format = Ogg.GetFormat(bytes);
-                                var ghFormat = ghgame.OggFormat.Clone();
-                                if(songFile.Name[0] == "_guitar") ghFormat.SampleRate = (int)ghgame.OGGGuitarSampleRate;
+                    byte[] bytes = new byte[0];
+                    bool isDummy = false;
+                    
+                    if(byteFile == "" && songFile.Extensions.Contains("ogg")){
+                        if(songFile.ID != "Drums" || ghgame.HasDrums){
+                            if(songFile.ID == "Main" && !song.UseDummySong) return;
+                            if(songFile.ID == "Guitar" && !song.UseDummyGuitar) return;
+                            if(songFile.ID == "Rhythm" && !song.UseDummyRhythm) return;
+                            if(songFile.ID == "Drums" && !song.UseDummyDrums) return;
+                            
+                            isDummy = true;
+                            songFile.FoundExtension = "ogg";
+                            bytes = Ogg.GetDummyBytes();
+                            byteFile = "dummy";
+                            if(songFile.OriginalExtension != "ogg") bytes = WAVFile.GetDummyBytes();
+                        }
+                    }
+                    
+                    if(byteFile == "" || song[songFile.ID] == null) return;
+                    
+                    Helpers.UpdateLine($"Data replacement detected: {song.ID}{songFile.Name[0]}.{songFile.OriginalExtension} => {Path.GetFileName(byteFile)}\n\n");
+                    //Console.WriteLine("");
+                    edited = true;
+                    bool isCorrectFormat = songFile.FoundExtension == songFile.OriginalExtension;
+                    
+                    if(byteFile != "dummy"){
+                        bytes = GetAndMergeTracks(songFile, byteFiles, isCorrectFormat, ghgame);
+                    }
+                    
+                    if(!isCorrectFormat){
+                        Helpers.UpdateLine($"  Converting file...");
+                        switch(songFile.OriginalExtension){
+                            case "hwas":
+                                int hwasSampleRate = (int)ghgame.HWASSampleRate;
+                                if(moddingSettings.KeepHWASUserSampleRate) hwasSampleRate = -1;
+                                if(moddingSettings.HWASSampleRate > -1) hwasSampleRate = moddingSettings.HWASSampleRate;
                                 
-                                if(!format.Matches(ghFormat)){
-                                    Helpers.UpdateLine("  Converting file...");
-                                    byte[] wav = Ogg.Decode(bytes);
-                                    bytes = Ogg.Encode(wav, ghFormat.SampleRate, (int)Math.Round((double)(ghFormat.NominalBitRate / 1000)));
-                                    
-                                    File.WriteAllBytes(convertedFile + ".ogg", bytes);
-                                }
+                                byte[] WAVbytes = ImaCodec.Encode(bytes, hwasSampleRate, !isDummy);
+                                
+                                HwasFile hwas = new HwasFile(WAVbytes, hwasSampleRate);
+                                bytes = hwas.GetAllBytes();
+                                File.WriteAllBytes(convertedFile + ".hwas", bytes);
+                                break;
+                            case "ogg":                                    
+                                var format = Ogg.GetFormat(bytes);
+                                format.Filename = Path.GetFileName(byteFile);
+                                format.ToString();
+                                Console.ReadLine();
+                                break;
+                        }
+                    }else{
+                        if(songFile.OriginalExtension == "ogg"){       
+                            var format = Ogg.GetFormat(bytes);
+                            var ghFormat = ghgame.OggFormat.Clone();
+                            if(songFile.Name[0] == "_guitar") ghFormat.SampleRate = (int)ghgame.OGGGuitarSampleRate;
+                            
+                            if(!format.Matches(ghFormat)){
+                                Helpers.UpdateLine("  Converting file...");
+                                byte[] wav = Ogg.Decode(bytes);
+                                if(!isDummy) wav = ImaCodec.IncreaseVolume(wav, 1.5f);
+                                bytes = Ogg.Encode(wav, ghFormat.SampleRate, (int)Math.Round((double)(ghFormat.NominalBitRate / 1000)));
+                                
+                                File.WriteAllBytes(convertedFile + ".ogg", bytes);
                             }
                         }
-                        Asset asset = (Asset)song[songFile.ID];
-                        asset.SetBytes(bytes, true);
                     }
+                    Asset asset = (Asset)song[songFile.ID];
+                    asset.SetBytes(bytes, true);
                 });
                 
                 if(edited){
@@ -501,12 +539,18 @@ namespace NDS{
             return ImaCodec.Merge(bytes);
         }
         
-        private static byte[] GetAndMergeTracks(SongFile songFile, List<string> customFiles, bool isCorrectFormat){
+        private static List<string> GetDrumTracks(List<string> customFiles){
+            var regex = new System.Text.RegularExpressions.Regex(@"drums_([0-9]+).ogg");
+            return customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
+        }
+        
+        private static byte[] GetAndMergeTracks(SongFile songFile, List<string> customFiles, bool isCorrectFormat, GHGAME ghgame){
             string filename = GetCustomFile(songFile, customFiles);
             
             if(isCorrectFormat) return File.ReadAllBytes(filename);
             
             List<byte[]> bytes = new List<byte[]>();
+            List<string> Drums = new List<string>();
             
             switch(songFile.Name[0]){
                 case "_song":
@@ -515,11 +559,16 @@ namespace NDS{
                     string Crowd = customFiles.Find(x => Path.GetFileName(x).Contains("crowd.ogg"));
                     if(Lyrics == null){
                         Console.WriteLine("  No vocals could be found!");
-                        return File.ReadAllBytes(filename);
+                        return Ogg.Decode(filename);
                     }
                     
                     bytes.Add(Ogg.Decode(filename));
                     bytes.Add(Ogg.Decode(Lyrics));
+                    
+                    if(!ghgame.HasDrums){
+                        Drums = GetDrumTracks(customFiles);
+                        Drums.ForEach(x => bytes.Add(Ogg.Decode(x)));
+                    }
                     
                     if(Crowd != null){
                         bytes.Add(Ogg.Decode(Crowd));
@@ -528,11 +577,10 @@ namespace NDS{
                     return MergeTracks(bytes);
                 case "_drums":
                     Helpers.UpdateLine("  Merging drums tracks...");
-                    var regex = new System.Text.RegularExpressions.Regex(@"drums_([0-9]+).ogg");
-                    List<string> Drums = customFiles.Where(x => regex.IsMatch(Path.GetFileName(x))).ToList();
+                    Drums = GetDrumTracks(customFiles);
                     if(Drums.Count <= 1){
                         Console.WriteLine("  No additional drums tracks could be found!");
-                        return File.ReadAllBytes(filename);
+                        return Ogg.Decode(filename);
                     }
                     
                     Drums.ForEach(d => bytes.Add(Ogg.Decode(d)));
