@@ -72,6 +72,19 @@ To replace a file, simply place the new file in the song's folder.
 
 Note that instead of _song.hwas or _drums.hwas files, you can provide _song.wav or _drums.wav files, or even song.ogg, drums_1.ogg, etc.
 
+## Use a single track containing all instruments
+In case your custom song only features one single audio file containing all the instruments' tracks,
+you can have the tool turn the other tracks silent by using dummy audio tracks.
+
+To do this, edit song.ini (or metadata.txt, depending on your setup) and add the relevant following lines:
+```
+useDummySong = true
+useDummyGuitar = true
+useDummyRhythm = true
+useDummyDrums = true
+```
+Warning: having all 4 lines above with the "true" value will make the whole song silent!
+
 ### Apply the changes
 Once the song information and files have edited/updated, simply drag and drop a Guitar Hero or Band Hero game onto the executable again.
 A new ROM will be created with all the changes you've made.

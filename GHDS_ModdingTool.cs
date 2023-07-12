@@ -112,6 +112,14 @@ namespace GHDS_ModdingTool{
             }
         }
         
+        public static byte[] GetEmbeddedResource(string name){
+            using(var stream = ExecutingAssembly.GetManifestResourceStream(name)){
+                var bytes = new byte[stream.Length];
+                stream.Read(bytes, 0, bytes.Length);
+                return bytes;
+            }
+        }
+        
         static void ExtractEmbeddedBinaries(){
             var NeedExtraction = new List<string>(){
                 "oggdec.exe",
@@ -130,11 +138,8 @@ namespace GHDS_ModdingTool{
                 string extraction_path = Path.Combine(resources_path, binaryName);
                 if(File.Exists(extraction_path)) return;
                 
-                using(var stream = ExecutingAssembly.GetManifestResourceStream(binaryName)){
-                    var bytes = new byte[stream.Length];
-                    stream.Read(bytes, 0, bytes.Length);
-                    File.WriteAllBytes(extraction_path, bytes);
-                }
+                byte[] bytes = GetEmbeddedResource(binaryName);
+                File.WriteAllBytes(extraction_path, bytes);
             });
         }
         
