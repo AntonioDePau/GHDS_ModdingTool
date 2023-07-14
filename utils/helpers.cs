@@ -8,7 +8,8 @@ public static class Helpers{
     public static void UpdateLine(string text){
         int paddingLength = Console.BufferWidth - text.Length;
         string padding = new String(' ', paddingLength);
-        Console.SetCursorPosition(0, Console.CursorTop - 1);
+        int top = Math.Max(0, Console.CursorTop - 1);
+        Console.SetCursorPosition(0, top);
         Console.Write($"{text}{padding}");
     }
     
