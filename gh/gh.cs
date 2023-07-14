@@ -245,6 +245,30 @@ namespace NDS{
             new GHGAME("C6QE52", "Guitar Hero - On Tour: Modern Hits", "US", "EN,FR"),
         };
         
+        private static string GetCustomSongFolder(string custom_songs_path, Song song){
+            string temp = Path.Combine(custom_songs_path, song.ID);
+            bool found_hash = false;
+            
+            Directory.GetDirectories(custom_songs_path).ToList().ForEach(folder => {
+                string hash_file = Path.Combine(folder, song.Hash + ".txt");
+                if(File.Exists(hash_file)){
+                    temp = folder;
+                    found_hash = true;
+                }
+            });
+            
+            if(!found_hash){
+                Directory.CreateDirectory(temp);
+                string hash_file_path = Path.Combine(temp, song.Hash + ".txt");
+                string hash_file = "[hashfile]\n";
+                hash_file += "title=" + song.Title;
+                hash_file += "band=" + song.Band;
+                File.WriteAllText(hash_file_path, hash_file);
+            }
+            
+            return temp;
+        }
+        
         public static bool ManageSongs(GHGAME ghgame, ARMFile ARM9, FNTFile FNT, FSINDEXFile FSINDEX, List<Song> Songs, ModdingSettings moddingSettings){
             Asset firstAsset = FNT.Assets.Find(y => y.Offset == FNT.Assets.FindAll(x => !x.IsFolder).Min(x => x.Offset));
             //Console.WriteLine($"First asset at: {firstAsset.Offset} ({firstAsset.GetFullName()} -> index: {firstAsset.FATIndex})");
