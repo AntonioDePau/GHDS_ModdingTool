@@ -578,13 +578,15 @@ namespace NDS{
             
             switch(songFile.Name[0]){
                 case "_song":
-                    Helpers.UpdateLine("  Merging song file with vocals...");
                     string Lyrics = customFiles.Find(x => Path.GetFileName(x).Contains("vocals.ogg"));
                     string Crowd = customFiles.Find(x => Path.GetFileName(x).Contains("crowd.ogg"));
                     if(Lyrics == null){
                         Console.WriteLine("  No vocals could be found!");
+                        Console.WriteLine(" ");
                         return Ogg.Decode(filename);
                     }
+                    
+                    Helpers.UpdateLine("  Merging song file with vocals...");
                     
                     bytes.Add(Ogg.Decode(filename));
                     bytes.Add(Ogg.Decode(Lyrics));
@@ -600,12 +602,14 @@ namespace NDS{
                     
                     return MergeTracks(bytes);
                 case "_drums":
-                    Helpers.UpdateLine("  Merging drums tracks...");
                     Drums = GetDrumTracks(customFiles);
                     if(Drums.Count <= 1){
                         Console.WriteLine("  No additional drums tracks could be found!");
+                        Console.WriteLine(" ");
                         return Ogg.Decode(filename);
                     }
+                    
+                    Helpers.UpdateLine("  Merging drums tracks...");
                     
                     Drums.ForEach(d => bytes.Add(Ogg.Decode(d)));
                     
