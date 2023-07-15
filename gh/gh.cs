@@ -426,7 +426,7 @@ namespace NDS{
                     new SongFile(new List<string>{"_song", "song."}, new List<string>{"hwas", "wav", "ogg"}, "Main"),
                     new SongFile(new List<string>{"_rhythm", "rhythm.", "bass."}, new List<string>{"ogg"}, "Rhythm"),
                     new SongFile(new List<string>{"_guitar", "guitar."}, new List<string>{"ogg"}, "Guitar"),
-                    new SongFile(new List<string>{"_drums", "drums_"}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
+                    new SongFile(new List<string>{"_drums", "drums_", "drums."}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
                     new SongFile(new List<string>{"_gems_easy"}, new List<string>{"qgm"}, "GuitarNotesEasy"),
                     new SongFile(new List<string>{"_gems_med"}, new List<string>{"qgm"}, "GuitarNotesMedium"),
                     new SongFile(new List<string>{"_gems_hard"}, new List<string>{"qgm"}, "GuitarNotesHard"),
