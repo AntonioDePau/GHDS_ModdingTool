@@ -77,7 +77,7 @@ namespace OGG{
             string tempFile = Path.Combine(ToolsPath, "oggtool_audio.temp");
             File.WriteAllBytes(tempFile, oggFile);
             
-            string Arguments = " --quiet --output - " + tempFile;
+            string Arguments = $" --quiet --output - \"{tempFile}\"";
             byte[] output = StartProcess(Path.Combine(ToolsPath, "oggdec.exe"), Arguments);
             
             return output;
@@ -87,7 +87,7 @@ namespace OGG{
             string tempFile = Path.Combine(ToolsPath, "oggtool_audio.temp");
             File.WriteAllBytes(tempFile, wavFile);
             
-            string Arguments = $" --quiet --bitrate {BitRate} --resample {SampleRate} --downmix --min-bitrate {BitRate} --max-bitrate {BitRate} -o - " + tempFile;
+            string Arguments = $" --quiet --bitrate {BitRate} --resample {SampleRate} --downmix --min-bitrate {BitRate} --max-bitrate {BitRate} -o - \"{tempFile}\"";
 
             byte[] output = StartProcess(Path.Combine(ToolsPath, "oggenc.exe"), Arguments);
             

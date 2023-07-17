@@ -627,13 +627,6 @@ namespace CHARTS{
                             count++;
                             //Console.WriteLine(time + ": " + note.Type + ", Length: " + note.Length + ", Number: " + note.Note);
                             
-                            // Make all 1/12 close notes hopos!
-                            if(lastNote != null && note.HasNote){
-                                if(note.Time - lastNote.Time <= note.Threshold){
-                                    ghnote.Hopo = true;
-                                }
-                            }
-                            
                             if(note.Modifier != null && note.Modifier.Valid){
                                 if(note.Modifier.Difficulty == difficulty.Name || note.Modifier.Difficulty == "Any"){
                                     currentModifier = note.Modifier.Value ? note.Modifier : null;
@@ -661,6 +654,7 @@ namespace CHARTS{
                             }else{ 
                                 ghnote.Time = note.Time;
                                 ghnote.Length = note.Length;
+                                ghnote.Threshold = note.Threshold;
                             }
                             
                             if(StarpowerEnd > -1 && note.Time < StarpowerEnd) ghnote.Starpower = true;
@@ -679,6 +673,17 @@ namespace CHARTS{
                             }
                             
                             /* Some GHDS/BHDS fixes */
+                            
+                            // Make all 1/12 close notes hopos!
+                            if(
+                                lastNote != null &&
+                                ghnote.Gem.Count == 1 &&
+                                !lastNote.Gem.Matches(ghnote.Gem)
+                            ){
+                                if(ghnote.Time - lastNote.Time <= ghnote.Threshold){
+                                    ghnote.Hopo = true;
+                                }
+                            }
                             
                             // Can't be a hopo with forced strum
                             if(ghnote.IsStrum) ghnote.Hopo = false;

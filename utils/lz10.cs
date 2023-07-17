@@ -498,7 +498,7 @@ public static class LZ10{
                 for(int i = 0; i < 8; i ++){
                     
                     if(current >= bytes.Length){
-                        //bw.Write((byte)0x00);
+                        bw.Write((byte)0x00);
                         continue;
                     }
 
