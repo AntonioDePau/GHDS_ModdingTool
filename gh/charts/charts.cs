@@ -110,6 +110,7 @@ namespace CHARTS{
         public class GHNote{
             public Gems Gem = new Gems();
             public double Time = 0;
+            public double Threshold = 0;
             public double Length = 0;
             public bool Hopo = false;
             public bool IsStrum = false;
