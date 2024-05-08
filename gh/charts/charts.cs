@@ -110,6 +110,7 @@ namespace CHARTS{
         public class GHNote{
             public Gems Gem = new Gems();
             public double Time = 0;
+            public double Threshold = 0;
             public double Length = 0;
             public bool Hopo = false;
             public bool IsStrum = false;
@@ -356,13 +357,15 @@ namespace CHARTS{
         public static void ParseMidi(string file){
             string midiFilePath = Path.Combine(file, "notes.mid");
             if(!File.Exists(midiFilePath)){
-                Console.WriteLine("Could not find: " + midiFilePath);
+                Helpers.UpdateLine("Could not find: " + Path.Combine(Path.GetFileName(midiFilePath), "notes.mid"));
+                Console.WriteLine(" ");
                 return;
             }
             
             string songIniFilePath = Path.Combine(file, "song.ini");
             if(!File.Exists(songIniFilePath)){
-                Console.WriteLine("Could not find: " + songIniFilePath);
+                Helpers.UpdateLine("Could not find: " + Path.Combine(Path.GetFileName(songIniFilePath), "song.ini"));
+                Console.WriteLine(" ");
                 return;
             }
             

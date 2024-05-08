@@ -95,9 +95,9 @@ namespace NDS{
                 OriginalDecompressedSize = DecompressedSize;
                 OriginalIsCompressed = IsCompressed;
             }
-            if(Name == "localize.English.bin"){
-                File.WriteAllBytes("localize.English.bin.decompressed", DecompressedBytes);
-            }
+            //if(Name == "localize.English.bin"){
+            //    File.WriteAllBytes("localize.English.bin.decompressed", DecompressedBytes);
+            //}
         }
         
         public string GetFullName(){

@@ -426,7 +426,7 @@ namespace NDS{
                     new SongFile(new List<string>{"_song", "song."}, new List<string>{"hwas", "wav", "ogg"}, "Main"),
                     new SongFile(new List<string>{"_rhythm", "rhythm.", "bass."}, new List<string>{"ogg"}, "Rhythm"),
                     new SongFile(new List<string>{"_guitar", "guitar."}, new List<string>{"ogg"}, "Guitar"),
-                    new SongFile(new List<string>{"_drums", "drums_"}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
+                    new SongFile(new List<string>{"_drums", "drums_", "drums."}, new List<string>{"hwas", "wav", "ogg"}, "Drums"),
                     new SongFile(new List<string>{"_gems_easy"}, new List<string>{"qgm"}, "GuitarNotesEasy"),
                     new SongFile(new List<string>{"_gems_med"}, new List<string>{"qgm"}, "GuitarNotesMedium"),
                     new SongFile(new List<string>{"_gems_hard"}, new List<string>{"qgm"}, "GuitarNotesHard"),
@@ -578,13 +578,15 @@ namespace NDS{
             
             switch(songFile.Name[0]){
                 case "_song":
-                    Helpers.UpdateLine("  Merging song file with vocals...");
                     string Lyrics = customFiles.Find(x => Path.GetFileName(x).Contains("vocals.ogg"));
                     string Crowd = customFiles.Find(x => Path.GetFileName(x).Contains("crowd.ogg"));
                     if(Lyrics == null){
                         Console.WriteLine("  No vocals could be found!");
+                        Console.WriteLine(" ");
                         return Ogg.Decode(filename);
                     }
+                    
+                    Helpers.UpdateLine("  Merging song file with vocals...");
                     
                     bytes.Add(Ogg.Decode(filename));
                     bytes.Add(Ogg.Decode(Lyrics));
@@ -600,12 +602,14 @@ namespace NDS{
                     
                     return MergeTracks(bytes);
                 case "_drums":
-                    Helpers.UpdateLine("  Merging drums tracks...");
                     Drums = GetDrumTracks(customFiles);
                     if(Drums.Count <= 1){
                         Console.WriteLine("  No additional drums tracks could be found!");
+                        Console.WriteLine(" ");
                         return Ogg.Decode(filename);
                     }
+                    
+                    Helpers.UpdateLine("  Merging drums tracks...");
                     
                     Drums.ForEach(d => bytes.Add(Ogg.Decode(d)));
                     
