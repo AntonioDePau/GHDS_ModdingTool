@@ -8,7 +8,7 @@ assignees: AntonioDePau
 ---
 
 **Describe the bug**
-\<a clear and concise description of what the bug is.>
+A clear and concise description of what the bug is.
 
 **Steps to reproduce the issue:**
 1. Go to '...'
@@ -17,12 +17,12 @@ assignees: AntonioDePau
 4. See error
 
 **Expected behavior**
-\<a clear and concise description of what you expected to happen.>
+A clear and concise description of what you expected to happen.
 
 **Screenshots**
-\<if applicable, add screenshots to help explain your problem.>
+If applicable, add screenshots to help explain your problem.
 
-**Version:** \<version of the tool you used, eg: 1.0.0>
+**Version:** <version of the tool you used, eg: 1.0.0>
 
 **Song used:**
-\<details about the song that was used when the issue happened, unless already specified in the steps to reproduce>
+Add details about the song that was used when the issue happened, unless already specified in the steps to reproduce.
