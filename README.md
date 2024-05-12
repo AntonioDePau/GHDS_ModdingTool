@@ -99,7 +99,7 @@ A new ROM will be created with all the changes you've made.
 
 ## Support
 If you need support for this tool, report an [issue](https://github.com/AntonioDePau/GHDS_MOddingTool/issues/new)
-or contact me on Discord (antoniodepau), you can find me in the [GHDS Central]([https://discord.gg/j83bQUh6](https://discord.gg/EXT4MKD)) server as well.
+or contact me on Discord (antoniodepau), you can find me in the [GHDS Central](https://discord.gg/EXT4MKD) server as well.
 
 ## GHDS modding scene credits
 - bromik
